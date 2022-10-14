@@ -36,7 +36,7 @@
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg " style="background: #067ec1;">
   <a class="navbar-brand text-white" href="{{ url('/') }}" style="margin-left: 20px;">
-    <img src="{{ public_asset('/assets/img/logo_blue_bg.svg') }}" width="135px" alt=""/>
+    <img src="{{ public_asset('/assets/img/eaglelogo.png') }}" width="110px" alt=""/>
   </a>
   <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navigation"
           aria-controls="navigation" aria-expanded="false" aria-label="Toggle navigation">
