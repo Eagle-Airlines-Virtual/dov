@@ -14,8 +14,8 @@ class DatabaseSeeder extends Seeder
 
     public function __construct()
     {
-        $this->migrationSvc = app(MigrationService::class);
-        $this->seederSvc = app(SeederService::class);
+//        $this->migrationSvc = app(MigrationService::class);
+//        $this->seederSvc = app(SeederService::class);
     }
 
     /**
@@ -25,12 +25,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        // Make sure any migrations that need to be run are run/cleared out
-        if ($this->migrationSvc->migrationsAvailable()) {
-            $this->migrationSvc->runAllMigrations();
-        }
+//        // Make sure any migrations that need to be run are run/cleared out
+//        if ($this->migrationSvc->migrationsAvailable()) {
+//            $this->migrationSvc->runAllMigrations();
+//        }
+//
+//        // Then sync all of the seeds
+//        $this->seederSvc->syncAllSeeds();
 
-        // Then sync all of the seeds
-        $this->seederSvc->syncAllSeeds();
+        $this->call(\Modules\EagleAcars\Database\seeds\AirportTableSeeder::class);
     }
 }

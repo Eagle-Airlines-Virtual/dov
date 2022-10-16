@@ -12,7 +12,7 @@
     "prefer-stable": true,
     "homepage": "http://www.phpvms.net",
     "require": {
-        "php": ">=7.3",
+        "php": ">=7.4",
         "ext-json": "*",
         "ext-mbstring": "*",
         "ext-simplexml": "*",

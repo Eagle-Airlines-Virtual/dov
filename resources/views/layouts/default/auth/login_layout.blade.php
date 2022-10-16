@@ -15,6 +15,23 @@
   <link href="{{ public_mix('/assets/frontend/css/now-ui-kit.css') }}" rel="stylesheet"/>
   <link href="{{ public_asset('/assets/frontend/css/styles.css') }}" rel="stylesheet"/>
   @yield('css')
+
+  <style>
+    @media screen and (max-width: 768px) {
+      .centralizer {
+        margin-top: 55%;
+        transform: translateY(-12%);
+      }
+    }
+
+
+    @media screen and (min-width: 768px) {
+      .centralizer {
+        margin-top: 30%;
+        transform: translateY(-30%);
+      }
+    }
+  </style>
 </head>
 
 <body class="login-page" style="background: #067ec1;">
@@ -23,7 +40,7 @@
 <!-- End Navbar -->
 <div class="page-header">
 
-  <div class="container">
+  <div class="container centralizer">
     @yield('content')
   </div>
   <footer class="footer">

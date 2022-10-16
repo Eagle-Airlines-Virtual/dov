@@ -70,6 +70,7 @@ return [
         Igaster\LaravelTheme\themeServiceProvider::class,
         Nwidart\Modules\LaravelModulesServiceProvider::class,
         Anhskohbo\NoCaptcha\NoCaptchaServiceProvider::class,
+        Tymon\JWTAuth\Providers\LaravelServiceProvider::class,
 
         /*
          * Application Service Providers...

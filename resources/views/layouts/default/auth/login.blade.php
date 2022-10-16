@@ -7,8 +7,7 @@
       {{ Form::open(['url' => url('/login'), 'method' => 'post', 'class' => 'form']) }}
       <div class="header header-primary text-center">
         <div class="logo-container" style="width: 320px;">
-          <img src="{{ public_asset('/assets/frontend/img/eaglelogo.png') }}" width="320" height="320"
-               style="background: #FFF">
+          <img src="{{ public_asset('/assets/frontend/img/eaglelogo.png') }}" width="320" />
         </div>
       </div>
       <div class="card-body">

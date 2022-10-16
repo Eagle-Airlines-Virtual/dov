@@ -44,7 +44,7 @@
           <div class="p-10" style="padding: 10px 0;">
             <div class="row">
               <div class="col-4">
-                <img src="{{ public_asset('/assets/img/logo_blue_bg.svg') }}" width="135px" style="" alt=""/>
+                <img src="{{ public_asset('/assets/img/eaglelogo.png') }}" width="135px" style="" alt=""/>
               </div>
               <div class="col-8 text-right">
                 <h4 class="text-white mb-0 mr-0 ml-0" style="margin-top: 5px;">@yield('title')</h4>
