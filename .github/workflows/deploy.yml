@@ -19,12 +19,6 @@ jobs:
         with:
           php-version: '7.4'
 
-      - name: Copy .env
-        run: cp .env.example .env
-
-      - name: Set Permissions
-        run: sudo chmod -R 777 *
-
       - name: Install dependencies
         run: composer install
 
