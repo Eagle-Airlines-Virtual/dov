@@ -1,0 +1,36 @@
+on:
+  push:
+    branches: [ "master" ]
+
+name: 🚀 Build and Deploy to Production Server
+
+permissions:
+  contents: write
+
+jobs:
+  setup:
+    name: 🚧 Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚚 Get latest code
+        uses: actions/checkout@v3
+
+      - uses: shivammathur/setup-php@15c43e89cdef867065b0213be354c2841860869e
+        with:
+          php-version: '7.4'
+
+      - name: Copy .env
+        run: cp .env.example .env
+
+      - name: Set Permissions
+        run: sudo chmod -R 777 *
+
+      - name: Install dependencies
+        run: composer install
+
+      - name: 🎉 Deploying
+        uses: SamKirkland/FTP-Deploy-Action@4.0.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
