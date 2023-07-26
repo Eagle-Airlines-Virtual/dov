@@ -10,25 +10,23 @@ use App\Repositories\AirlineRepository;
 use App\Repositories\AirportRepository;
 use App\Repositories\UserRepository;
 use App\Support\Countries;
-use App\Support\Discord;
 use App\Support\Timezonelist;
 use App\Support\Utils;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\View\View;
 use Intervention\Image\Facades\Image;
 use Laracasts\Flash\Flash;
 use Nwidart\Modules\Facades\Module;
 
 class ProfileController extends Controller
 {
-    private $airlineRepo;
-    private $airportRepo;
-    private $userRepo;
-
     /**
      * ProfileController constructor.
      *
@@ -37,13 +35,10 @@ class ProfileController extends Controller
      * @param UserRepository    $userRepo
      */
     public function __construct(
-        AirlineRepository $airlineRepo,
-        AirportRepository $airportRepo,
-        UserRepository $userRepo
+        private readonly AirlineRepository $airlineRepo,
+        private readonly AirportRepository $airportRepo,
+        private readonly UserRepository $userRepo
     ) {
-        $this->airlineRepo = $airlineRepo;
-        $this->airportRepo = $airportRepo;
-        $this->userRepo = $userRepo;
     }
 
     /**
@@ -65,26 +60,36 @@ class ProfileController extends Controller
      * Redirect to show() since only a single page gets shown and the template controls
      * the other items that are/aren't shown
      *
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return View
      */
-    public function index()
+    public function index(): View
     {
         return $this->show(Auth::user()->id);
     }
 
     /**
-     * @param $id
+     * @param int $id
      *
-     * @return mixed
+     * @return RedirectResponse|View
      */
-    public function show($id)
+    public function show(int $id): RedirectResponse|View
     {
         /** @var \App\Models\User $user */
-        $with = ['airline', 'awards', 'current_airport', 'fields.field', 'home_airport', 'last_pirep', 'rank', 'typeratings'];
+        $with = [
+            'airline',
+            'awards',
+            'current_airport',
+            'fields.field',
+            'home_airport',
+            'last_pirep',
+            'rank',
+            'typeratings',
+        ];
         $user = User::with($with)->where('id', $id)->first();
 
         if (empty($user)) {
             Flash::error('User not found!');
+
             return redirect(route('frontend.dashboard.index'));
         }
 
@@ -104,15 +109,16 @@ class ProfileController extends Controller
      *
      * @throws \Exception
      *
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector|\Illuminate\View\View
+     * @return RedirectResponse|View
      */
-    public function edit(Request $request)
+    public function edit(Request $request): RedirectResponse|View
     {
         /** @var \App\Models\User $user */
         $user = User::with('fields.field')->where('id', Auth::id())->first();
 
         if (empty($user)) {
             Flash::error('User not found!');
+
             return redirect(route('frontend.dashboard.index'));
         }
 
@@ -135,9 +141,9 @@ class ProfileController extends Controller
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
      *
-     * @return mixed
+     * @return RedirectResponse
      */
-    public function update(Request $request)
+    public function update(Request $request): RedirectResponse
     {
         $id = Auth::user()->id;
         $user = $this->userRepo->findWithoutFail($id);
@@ -173,10 +179,6 @@ class ProfileController extends Controller
             $req_data['password'] = Hash::make($req_data['password']);
         }
 
-        if (isset($req_data['avatar']) !== null) {
-            Storage::delete($user->avatar);
-        }
-
         // Find out the user's private channel id
         /*
         // TODO: Uncomment when Discord API functionality is enabled
@@ -188,9 +190,13 @@ class ProfileController extends Controller
         }*/
 
         if ($request->hasFile('avatar')) {
+            if ($user->avatar !== null) {
+                Storage::delete($user->avatar);
+            }
+
             $avatar = $request->file('avatar');
             $file_name = $user->ident.'.'.$avatar->getClientOriginalExtension();
-            $path = "avatars/{$file_name}";
+            $path = "avatars/$file_name";
 
             // Create the avatar, resizing it and keeping the aspect ratio.
             // https://stackoverflow.com/a/26892028
@@ -231,9 +237,9 @@ class ProfileController extends Controller
      *
      * @param Request $request
      *
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     * @return RedirectResponse
      */
-    public function regen_apikey(Request $request)
+    public function regen_apikey(Request $request): RedirectResponse
     {
         $user = User::find(Auth::user()->id);
         Log::info('Regenerating API key "'.$user->ident.'"');
@@ -251,9 +257,9 @@ class ProfileController extends Controller
      *
      * @param \Illuminate\Http\Request $request
      *
-     * @return \Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Http\Response
+     * @return Response
      */
-    public function acars(Request $request)
+    public function acars(Request $request): Response
     {
         $user = Auth::user();
         $config = view('system.acars.config', ['user' => $user])->render();

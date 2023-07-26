@@ -6,19 +6,20 @@ use App\Contracts\Controller;
 use App\Models\Setting;
 use App\Services\FinanceService;
 use Igaster\LaravelTheme\Facades\Theme;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 
 class SettingsController extends Controller
 {
-    private $financeSvc;
-
     /**
      * @param FinanceService $financeSvc
      */
-    public function __construct(FinanceService $financeSvc)
-    {
-        $this->financeSvc = $financeSvc;
+    public function __construct(
+        private readonly FinanceService $financeSvc
+    ) {
     }
 
     /**
@@ -60,7 +61,7 @@ class SettingsController extends Controller
     /**
      * Display the settings. Group them by the setting group
      */
-    public function index()
+    public function index(): View
     {
         $settings = Setting::where('type', '!=', 'hidden')->orderBy('order')->get();
         $settings = $settings->groupBy('group');
@@ -77,9 +78,9 @@ class SettingsController extends Controller
      *
      * @param Request $request
      *
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     * @return RedirectResponse
      */
-    public function update(Request $request)
+    public function update(Request $request): RedirectResponse
     {
         foreach ($request->post() as $id => $value) {
             $setting = Setting::find($id);
@@ -94,6 +95,9 @@ class SettingsController extends Controller
             Log::info('Updating "'.$setting->id.'" from "'.$setting->value.'" to "'.$value.'"');
             $setting->value = $value;
             $setting->save();
+
+            $cache = config('cache.keys.SETTINGS');
+            Cache::forget($cache['key'].$setting->key);
         }
 
         $this->financeSvc->changeJournalCurrencies();

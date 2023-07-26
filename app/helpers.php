@@ -6,6 +6,7 @@ use App\Repositories\SettingRepository;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 /*
  * array_key_first only exists in PHP 7.3+
@@ -169,7 +170,15 @@ if (!function_exists('setting')) {
         $settingRepo = app(SettingRepository::class);
 
         try {
-            $value = $settingRepo->retrieve($key);
+            if (app()->environment('production')) {
+                $cache = config('cache.keys.SETTINGS');
+
+                $value = Cache::remember($cache['key'].$key, $cache['time'], function () use ($key, $settingRepo) {
+                    return $settingRepo->retrieve($key);
+                });
+            } else {
+                $value = $settingRepo->retrieve($key);
+            }
         } catch (SettingNotFound $e) {
             return $default;
         } catch (Exception $e) {
@@ -370,7 +379,7 @@ if (!function_exists('secstohhmm')) {
     function secstohhmm($seconds)
     {
         $seconds = round((float) $seconds);
-        $hhmm = sprintf('%02d%02d', ($seconds / 3600), ($seconds / 60 % 60));
+        $hhmm = sprintf('%02d%02d', $seconds / 3600, $seconds / 60 % 60);
         echo $hhmm;
     }
 }

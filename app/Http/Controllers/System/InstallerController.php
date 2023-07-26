@@ -14,8 +14,6 @@ use App\Services\UserService;
 use App\Support\Countries;
 use App\Support\Utils;
 use Exception;
-use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\View\Factory;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,58 +22,41 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
-use function in_array;
 use RuntimeException;
+
+use function in_array;
 
 class InstallerController extends Controller
 {
-    private $airlineSvc;
-    private $analyticsSvc;
-    private $dbSvc;
-    private $envSvc;
-    private $migrationSvc;
-    private $reqSvc;
-    private $seederSvc;
-    private $userService;
-
     /**
      * InstallerController constructor.
      *
      * @param AirlineService      $airlineSvc
      * @param AnalyticsService    $analyticsSvc
-     * @param DatabaseService     $dbService
-     * @param ConfigService       $envService
+     * @param DatabaseService     $dbSvc
+     * @param ConfigService       $envSvc
      * @param MigrationService    $migrationSvc
      * @param RequirementsService $reqSvc
      * @param SeederService       $seederSvc
      * @param UserService         $userService
      */
     public function __construct(
-        AirlineService $airlineSvc,
-        AnalyticsService $analyticsSvc,
-        DatabaseService $dbService,
-        ConfigService $envService,
-        MigrationService $migrationSvc,
-        RequirementsService $reqSvc,
-        SeederService $seederSvc,
-        UserService $userService
+        private readonly AirlineService $airlineSvc,
+        private readonly AnalyticsService $analyticsSvc,
+        private readonly DatabaseService $dbSvc,
+        private readonly ConfigService $envSvc,
+        private readonly MigrationService $migrationSvc,
+        private readonly RequirementsService $reqSvc,
+        private readonly SeederService $seederSvc,
+        private readonly UserService $userService
     ) {
-        $this->airlineSvc = $airlineSvc;
-        $this->analyticsSvc = $analyticsSvc;
-        $this->dbSvc = $dbService;
-        $this->envSvc = $envService;
-        $this->migrationSvc = $migrationSvc;
-        $this->reqSvc = $reqSvc;
-        $this->seederSvc = $seederSvc;
-        $this->userService = $userService;
-
         Utils::disableDebugToolbar();
     }
 
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(): View
     {
         if (config('app.key') !== 'base64:zdgcDqu9PM8uGWCtMxd74ZqdGJIrnw812oRMmwDF6KY=') {
             return view('system.installer.errors.already-installed');
@@ -84,7 +65,7 @@ class InstallerController extends Controller
         return view('system.installer.install.index-start');
     }
 
-    protected function testDb(Request $request)
+    protected function testDb(Request $request): void
     {
         $this->dbSvc->checkDbConnection(
             $request->post('db_conn'),
@@ -101,9 +82,9 @@ class InstallerController extends Controller
      *
      * @param Request $request
      *
-     * @return Application|Factory|View
+     * @return View
      */
-    public function dbtest(Request $request)
+    public function dbtest(Request $request): View
     {
         $status = 'success';  // success|warn|danger
         $message = 'Database connection looks good!';
@@ -142,9 +123,9 @@ class InstallerController extends Controller
     /**
      * Step 1. Check the modules and permissions
      *
-     * @return Factory|View
+     * @return View
      */
-    public function step1()
+    public function step1(): View
     {
         $php_version = $this->reqSvc->checkPHPVersion();
         $extensions = $this->reqSvc->checkExtensions();
@@ -171,9 +152,9 @@ class InstallerController extends Controller
     /**
      * Step 2. Database Setup
      *
-     * @return Factory|View
+     * @return View
      */
-    public function step2()
+    public function step2(): View
     {
         $db_types = ['mysql' => 'mysql', 'sqlite' => 'sqlite'];
         return view('system.installer.install.steps.step2-db', [
@@ -186,9 +167,9 @@ class InstallerController extends Controller
      *
      * @param Request $request
      *
-     * @return RedirectResponse|Redirector
+     * @return RedirectResponse
      */
-    public function envsetup(Request $request)
+    public function envsetup(Request $request): RedirectResponse
     {
         $log_str = $request->post();
         $log_str['db_pass'] = '';
@@ -242,9 +223,9 @@ class InstallerController extends Controller
     /**
      * Step 2b. Setup the database
      *
-     * @return mixed
+     * @return RedirectResponse|View
      */
-    public function dbsetup()
+    public function dbsetup(): RedirectResponse|View
     {
         $console_out = '';
 
@@ -269,8 +250,10 @@ class InstallerController extends Controller
 
     /**
      * Step 3. Setup the admin user and initial settings
+     *
+     * @return View
      */
-    public function step3()
+    public function step3(): View
     {
         return view('system.installer.install.steps.step3-user', [
             'countries' => Countries::getSelectList(),
@@ -285,9 +268,9 @@ class InstallerController extends Controller
      * @throws RuntimeException
      * @throws Exception
      *
-     * @return mixed
+     * @return RedirectResponse|View
      */
-    public function usersetup(Request $request)
+    public function usersetup(Request $request): RedirectResponse|View
     {
         $validator = Validator::make($request->all(), [
             'airline_name'    => 'required',
@@ -326,6 +309,7 @@ class InstallerController extends Controller
             'api_key'    => Utils::generateApiKey(),
             'airline_id' => $airline->id,
             'password'   => Hash::make($request->get('password')),
+            'opt_in'     => true,
         ];
 
         $user = $this->userService->createUser($attrs, ['admin']);

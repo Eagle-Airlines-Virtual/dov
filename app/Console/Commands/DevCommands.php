@@ -24,7 +24,8 @@ class DevCommands extends Command
 {
     protected $signature = 'phpvms {cmd} {param?}';
     protected $description = 'Developer commands';
-    protected $dbSvc;
+
+    protected DatabaseService $dbSvc;
 
     /**
      * DevCommands constructor.
@@ -47,7 +48,7 @@ class DevCommands extends Command
 
         if (!$command) {
             $this->error('No command specified!');
-            exit();
+            exit;
         }
 
         $commands = [
@@ -67,7 +68,7 @@ class DevCommands extends Command
 
         if (!array_key_exists($command, $commands)) {
             $this->error('Command not found!');
-            exit();
+            exit;
         }
 
         $this->{$commands[$command]}();
@@ -198,7 +199,7 @@ class DevCommands extends Command
         $icao = $this->argument('param');
         if (!$icao) {
             $this->error('Enter an ICAO!');
-            exit();
+            exit;
         }
 
         $airportSvc = app(AirportService::class);

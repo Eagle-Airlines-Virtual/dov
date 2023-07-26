@@ -167,6 +167,8 @@ class RouteServiceProvider extends ServiceProvider
                 Route::get('pilots', 'UserController@index')->name('pilots.index');
 
                 Route::get('livemap', 'LiveMapController@index')->name('livemap.index');
+
+                Route::get('lang/{lang}', 'LanguageController@switchLang')->name('lang.switch');
             });
 
             Route::get('/logout', 'Auth\LoginController@logout')->name('auth.logout');
@@ -493,7 +495,6 @@ class RouteServiceProvider extends ServiceProvider
                 'prefix'     => 'modules',
                 'middleware' => ['ability:admin,modules'],
             ], function () {
-
                 //Modules Index
                 Route::get('/', 'ModulesController@index')->name('index');
 
@@ -581,6 +582,7 @@ class RouteServiceProvider extends ServiceProvider
                 Route::post('pireps/prefile', 'PirepController@prefile');
                 Route::post('pireps/{pirep_id}', 'PirepController@update');
                 Route::patch('pireps/{pirep_id}', 'PirepController@update');
+                Route::put('pireps/{pirep_id}/update', 'PirepController@update');
                 Route::post('pireps/{pirep_id}/update', 'PirepController@update');
                 Route::post('pireps/{pirep_id}/file', 'PirepController@file');
                 Route::post('pireps/{pirep_id}/comments', 'PirepController@comments_post');

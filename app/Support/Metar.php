@@ -7,10 +7,10 @@ use App\Support\Units\Distance;
 use App\Support\Units\Pressure;
 use App\Support\Units\Temperature;
 use App\Support\Units\Velocity;
-use function count;
-use Illuminate\Support\Facades\Log;
 use PhpUnitsOfMeasure\Exception\NonNumericValue;
 use PhpUnitsOfMeasure\Exception\NonStringUnitName;
+
+use function count;
 
 /**
  * Class Metar
@@ -403,14 +403,11 @@ class Metar implements \ArrayAccess
      * @param int|float $value
      * @param string    $unit  "feet" or "meters"
      *
-     * @throws NonStringUnitName
-     * @throws NonNumericValue
-     *
      * @return Altitude
      */
     protected function createAltitude($value, $unit)
     {
-        return new Altitude((float) $value, $unit);
+        return Altitude::make((float) $value, $unit);
     }
 
     /**
@@ -419,14 +416,11 @@ class Metar implements \ArrayAccess
      * @param int|float $value
      * @param string    $unit  "m" (meters) or "mi" (miles)
      *
-     * @throws NonNumericValue
-     * @throws NonStringUnitName
-     *
      * @return Distance
      */
     protected function createDistance($value, $unit)
     {
-        return new Distance((float) $value, $unit);
+        return Distance::make((float) $value, $unit);
     }
 
     /**
@@ -442,7 +436,7 @@ class Metar implements \ArrayAccess
      */
     protected function createPressure($value, $unit)
     {
-        return new Pressure((float) $value, $unit);
+        return Pressure::make((float) $value, $unit);
     }
 
     /**
@@ -458,7 +452,7 @@ class Metar implements \ArrayAccess
      */
     protected function createTemperature($value, $unit)
     {
-        return new Temperature((float) $value, $unit);
+        return Temperature::make((float) $value, $unit);
     }
 
     /**
@@ -474,7 +468,7 @@ class Metar implements \ArrayAccess
      */
     protected function createVelocity($value, $unit)
     {
-        return new Velocity((float) $value, $unit);
+        return Velocity::make((float) $value, $unit);
     }
 
     /**
@@ -1856,7 +1850,7 @@ class Metar implements \ArrayAccess
      *
      * @since 5.0.0
      */
-    public function offsetExists($offset)
+    public function offsetExists($offset): bool
     {
         return array_key_exists($offset, $this->result);
     }
@@ -1874,7 +1868,7 @@ class Metar implements \ArrayAccess
      *
      * @since 5.0.0
      */
-    public function offsetGet($offset)
+    public function offsetGet($offset): mixed
     {
         return $this->result[$offset];
     }
@@ -1895,7 +1889,7 @@ class Metar implements \ArrayAccess
      *
      * @since 5.0.0
      */
-    public function offsetSet($offset, $value)
+    public function offsetSet($offset, $value): void
     {
         $this->result[$offset] = $value;
     }
@@ -1913,7 +1907,7 @@ class Metar implements \ArrayAccess
      *
      * @since 5.0.0
      */
-    public function offsetUnset($offset)
+    public function offsetUnset($offset): void
     {
         $this->result[$offset] = null;
     }

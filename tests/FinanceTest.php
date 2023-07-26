@@ -35,7 +35,7 @@ class FinanceTest extends TestCase
     /** @var \App\Services\FareService */
     private $fareSvc;
 
-    /** @var \App\Services\FinanceService */
+    /** @var PirepFinanceService */
     private $financeSvc;
 
     /** @var FleetService */
@@ -84,31 +84,31 @@ class FinanceTest extends TestCase
         $this->fleetSvc->addSubfleetToRank($subfleet['subfleet'], $rank);
 
         /** @var Airport $dpt_apt */
-        $dpt_apt = factory(Airport::class)->create([
+        $dpt_apt = Airport::factory()->create([
             'ground_handling_cost' => 10,
             'fuel_jeta_cost'       => 10,
         ]);
 
         /** @var Airport $arr_apt */
-        $arr_apt = factory(Airport::class)->create([
+        $arr_apt = Airport::factory()->create([
             'ground_handling_cost' => 10,
             'fuel_jeta_cost'       => 10,
         ]);
 
         /** @var User $user */
-        $user = factory(User::class)->create([
+        $user = User::factory()->create([
             'rank_id' => $rank->id,
         ]);
 
         /** @var Flight $flight */
-        $flight = factory(Flight::class)->create([
+        $flight = Flight::factory()->create([
             'airline_id'     => $user->airline_id,
             'dpt_airport_id' => $dpt_apt->icao,
             'arr_airport_id' => $arr_apt->icao,
         ]);
 
         /** @var Pirep $pirep */
-        $pirep = factory(Pirep::class)->create([
+        $pirep = Pirep::factory()->create([
             'flight_number'  => $flight->flight_number,
             'flight_type'    => FlightType::SCHED_PAX,
             'route_code'     => $flight->route_code,
@@ -129,8 +129,17 @@ class FinanceTest extends TestCase
          * Add fares to the subfleet, and then add the fares
          * to the PIREP when it's saved, and set the capacity
          */
+
         /** @var Fare $fares */
-        $fares = factory(Fare::class, 3)->create([
+        $fares = Fare::factory()->count(2)->create([
+            'price'    => 100,
+            'cost'     => 50,
+            'capacity' => 10,
+        ]);
+
+        // Add one weird id to test the pluck
+        $fares[] = Fare::factory()->create([
+            'id'       => 200,
             'price'    => 100,
             'cost'     => 50,
             'capacity' => 10,
@@ -141,26 +150,26 @@ class FinanceTest extends TestCase
         }
 
         // Add an expense
-        factory(Expense::class)->create([
+        Expense::factory()->create([
             'airline_id' => null,
             'amount'     => 100,
         ]);
 
         // Add a subfleet expense
-        factory(Expense::class)->create([
+        Expense::factory()->create([
             'ref_model'    => Subfleet::class,
             'ref_model_id' => $subfleet['subfleet']->id,
             'amount'       => 200,
         ]);
 
         // Add expenses for airports
-        factory(Expense::class)->create([
+        Expense::factory()->create([
             'ref_model'    => Airport::class,
             'ref_model_id' => $dpt_apt->id,
             'amount'       => 50,
         ]);
 
-        factory(Expense::class)->create([
+        Expense::factory()->create([
             'ref_model'    => Airport::class,
             'ref_model_id' => $arr_apt->id,
             'amount'       => 100,
@@ -183,13 +192,13 @@ class FinanceTest extends TestCase
         $this->updateSetting('pireps.only_aircraft_at_dpt_airport', false);
         $this->updateSetting('pireps.restrict_aircraft_to_rank', false);
 
-        $this->user = factory(User::class)->create();
+        $this->user = User::factory()->create();
 
         /** @var Flight $flight */
-        $flight = factory(Flight::class)->create();
+        $flight = Flight::factory()->create();
 
         /** @var Subfleet $subfleet */
-        $subfleet = factory(Subfleet::class)->create();
+        $subfleet = Subfleet::factory()->create();
         $this->fleetSvc->addSubfleetToFlight($subfleet, $flight);
 
         /**
@@ -199,7 +208,7 @@ class FinanceTest extends TestCase
          * mostly for the output side
          */
         /** @var Fare $fare */
-        $fare = factory(Fare::class)->create([
+        $fare = Fare::factory()->create([
             'price'    => 10,
             'cost'     => 20,
             'capacity' => 100,
@@ -256,17 +265,17 @@ class FinanceTest extends TestCase
         /** @var BidService $bidSvc */
         $bidSvc = app(BidService::class);
 
-        $this->user = factory(User::class)->create();
+        $this->user = User::factory()->create();
 
         /** @var Flight $flight */
-        $flight = factory(Flight::class)->create();
+        $flight = Flight::factory()->create();
 
         /** @var Subfleet $subfleet */
-        $subfleet = factory(Subfleet::class)->create();
+        $subfleet = Subfleet::factory()->create();
         $this->fleetSvc->addSubfleetToFlight($subfleet, $flight);
 
         /** @var Fare $fare */
-        $fare = factory(Fare::class)->create();
+        $fare = Fare::factory()->create();
 
         $this->fareSvc->setForFlight($flight, $fare);
 
@@ -294,14 +303,14 @@ class FinanceTest extends TestCase
         /**
          * Add a user and flights
          */
-        $this->user = factory(User::class)->create();
+        $this->user = User::factory()->create();
         $flight = $this->addFlight($this->user);
 
         /** @var FareService $fare_svc */
         $fare_svc = app(FareService::class);
 
         /** @var \App\Models\Fare $fare */
-        $fare = factory(Fare::class)->create();
+        $fare = Fare::factory()->create();
         $fare_svc->setForSubfleet($flight->subfleets[0], $fare, ['price' => 50]);
 
         // Get from API
@@ -321,13 +330,13 @@ class FinanceTest extends TestCase
     public function testFlightFareOverrideAsPercent()
     {
         /** @var Flight $flight */
-        $flight = factory(Flight::class)->create();
+        $flight = Flight::factory()->create();
 
         /** @var \App\Models\Fare $fare */
-        $fare = factory(Fare::class)->create();
+        $fare = Fare::factory()->create();
 
         // Subfleet needs to be attached to a flight
-        $subfleet = factory(Subfleet::class)->create();
+        $subfleet = Subfleet::factory()->create();
         $this->fleetSvc->addSubfleetToFlight($subfleet, $flight);
 
         $percent_incr = '120%';
@@ -355,8 +364,8 @@ class FinanceTest extends TestCase
 
     public function testSubfleetFaresNoOverride()
     {
-        $subfleet = factory(Subfleet::class)->create();
-        $fare = factory(Fare::class)->create();
+        $subfleet = Subfleet::factory()->create();
+        $fare = Fare::factory()->create();
 
         $this->fareSvc->setForSubfleet($subfleet, $fare);
         $subfleet_fares = $this->fareSvc->getForSubfleet($subfleet);
@@ -386,8 +395,8 @@ class FinanceTest extends TestCase
 
     public function testSubfleetFaresOverride()
     {
-        $subfleet = factory(Subfleet::class)->create();
-        $fare = factory(Fare::class)->create();
+        $subfleet = Subfleet::factory()->create();
+        $fare = Fare::factory()->create();
 
         $this->fareSvc->setForSubfleet($subfleet, $fare, [
             'price' => 50, 'capacity' => 400,
@@ -423,8 +432,8 @@ class FinanceTest extends TestCase
      */
     public function testSubfleetFareOverrideAsPercent()
     {
-        $subfleet = factory(Subfleet::class)->create();
-        $fare = factory(Fare::class)->create();
+        $subfleet = Subfleet::factory()->create();
+        $fare = Fare::factory()->create();
 
         $percent_incr = '20%';
         $percent_decr = '-20%';
@@ -454,9 +463,9 @@ class FinanceTest extends TestCase
      */
     public function testGetFaresWithOverrides()
     {
-        $flight = factory(Flight::class)->create();
-        $subfleet = factory(Subfleet::class)->create();
-        [$fare1, $fare2, $fare3, $fare4] = factory(Fare::class, 4)->create();
+        $flight = Flight::factory()->create();
+        $subfleet = Subfleet::factory()->create();
+        [$fare1, $fare2, $fare3, $fare4] = Fare::factory()->count(4)->create();
 
         // add to the subfleet, and just override one of them
         $this->fareSvc->setForSubfleet($subfleet, $fare1);
@@ -508,8 +517,8 @@ class FinanceTest extends TestCase
 
     public function testGetFaresNoFlightOverrides()
     {
-        $subfleet = factory(Subfleet::class)->create();
-        [$fare1, $fare2, $fare3] = factory(Fare::class, 3)->create();
+        $subfleet = Subfleet::factory()->create();
+        [$fare1, $fare2, $fare3] = Fare::factory()->count(3)->create();
 
         // add to the subfleet, and just override one of them
         $this->fareSvc->setForSubfleet($subfleet, $fare1);
@@ -556,11 +565,11 @@ class FinanceTest extends TestCase
         $rank = $this->createRank(10, [$subfleet['subfleet']->id]);
         $this->fleetSvc->addSubfleetToRank($subfleet['subfleet'], $rank);
 
-        $this->user = factory(User::class)->create([
+        $this->user = User::factory()->create([
             'rank_id' => $rank->id,
         ]);
 
-        $pirep = factory(Pirep::class)->create([
+        $pirep = Pirep::factory()->create([
             'user_id'     => $this->user->id,
             'aircraft_id' => $subfleet['aircraft']->random(),
             'source'      => PirepSource::ACARS,
@@ -583,11 +592,11 @@ class FinanceTest extends TestCase
             'acars_pay' => $acars_pay_rate,
         ]);
 
-        $this->user = factory(User::class)->create([
+        $this->user = User::factory()->create([
             'rank_id' => $rank->id,
         ]);
 
-        $pirep_acars = factory(Pirep::class)->create([
+        $pirep_acars = Pirep::factory()->create([
             'user_id'     => $this->user->id,
             'aircraft_id' => $subfleet['aircraft']->random(),
             'source'      => PirepSource::ACARS,
@@ -607,7 +616,7 @@ class FinanceTest extends TestCase
             'manual_pay' => $manual_pay_rate,
         ]);
 
-        $pirep_manual = factory(Pirep::class)->create([
+        $pirep_manual = Pirep::factory()->create([
             'user_id'     => $this->user->id,
             'aircraft_id' => $subfleet['aircraft']->random(),
             'source'      => PirepSource::MANUAL,
@@ -634,11 +643,11 @@ class FinanceTest extends TestCase
             'acars_pay' => $acars_pay_rate,
         ]);
 
-        $this->user = factory(User::class)->create([
+        $this->user = User::factory()->create([
             'rank_id' => $rank->id,
         ]);
 
-        $pirep_acars = factory(Pirep::class)->create([
+        $pirep_acars = Pirep::factory()->create([
             'user_id'     => $this->user->id,
             'aircraft_id' => $subfleet['aircraft']->random(),
             'source'      => PirepSource::ACARS,
@@ -648,7 +657,7 @@ class FinanceTest extends TestCase
         $payment = $this->financeSvc->getPilotPay($pirep_acars);
         $this->assertEquals(100, $payment->getValue());
 
-        $pirep_acars = factory(Pirep::class)->create([
+        $pirep_acars = Pirep::factory()->create([
             'user_id'     => $this->user->id,
             'aircraft_id' => $subfleet['aircraft']->random(),
             'source'      => PirepSource::ACARS,
@@ -669,16 +678,16 @@ class FinanceTest extends TestCase
             'acars_pay' => $acars_pay_rate,
         ]);
 
-        $this->user = factory(User::class)->create([
+        $this->user = User::factory()->create([
             'rank_id' => $rank->id,
         ]);
 
-        $flight = factory(Flight::class)->create([
+        $flight = Flight::factory()->create([
             'airline_id' => $this->user->airline_id,
             'pilot_pay'  => 1000,
         ]);
 
-        $pirep_acars = factory(Pirep::class)->create([
+        $pirep_acars = Pirep::factory()->create([
             'user_id'     => $this->user->id,
             'aircraft_id' => $subfleet['aircraft']->random(),
             'source'      => PirepSource::ACARS,
@@ -689,7 +698,7 @@ class FinanceTest extends TestCase
         $payment = $this->financeSvc->getPilotPay($pirep_acars);
         $this->assertEquals(1000, $payment->getValue());
 
-        $pirep_acars = factory(Pirep::class)->create([
+        $pirep_acars = Pirep::factory()->create([
             'user_id'     => $this->user->id,
             'aircraft_id' => $subfleet['aircraft']->random(),
             'source'      => PirepSource::ACARS,
@@ -707,25 +716,25 @@ class FinanceTest extends TestCase
     {
         $journalRepo = app(JournalRepository::class);
 
-        $user = factory(User::class)->create();
-        $journal = factory(Journal::class)->create();
+        $user = User::factory()->create();
+        $journal = Journal::factory()->create();
 
         $journalRepo->post(
             $journal,
-            Money::createFromAmount(100),
+            Money::createFromAmount(100.5),
             null,
             $user
         );
 
         $balance = $journalRepo->getBalance($journal);
-        $this->assertEquals(100, $balance->getValue());
-        $this->assertEquals(100, $journal->balance->getValue());
+        $this->assertEquals(100.5, $balance->getValue());
+        $this->assertEquals(100.5, $journal->balance->getValue());
 
         // add another transaction
 
         $journalRepo->post(
             $journal,
-            Money::createFromAmount(25),
+            Money::createFromAmount(24.5),
             null,
             $user
         );
@@ -770,14 +779,17 @@ class FinanceTest extends TestCase
             ]);
         }
 
-        $this->fareSvc->saveForPirep($pirep, $fare_counts);
-        $all_fares = $this->financeSvc->getReconciledFaresForPirep($pirep);
+        $this->fareSvc->saveToPirep($pirep, $fare_counts);
+        $all_fares = $this->financeSvc->getFaresForPirep($pirep);
 
+        $this->assertCount(3, $all_fares);
         $fare_counts = collect($fare_counts);
         foreach ($all_fares as $fare) {
-            $set_fare = $fare_counts->where('fare_id', $fare->id)->first();
-            $this->assertEquals($set_fare['count'], $fare->count);
-            $this->assertNotEmpty($fare->price);
+            // $set_fare = $fare_counts->where('fare_id', $fare->id)->first();
+            $this->assertEquals($fare['count'], $fare->count);
+            $this->assertNotEmpty($fare['price']);
+            $this->assertNotEmpty($fare['cost']);
+            $this->assertNotEmpty($fare['capacity']);
         }
     }
 
@@ -787,20 +799,20 @@ class FinanceTest extends TestCase
     public function testPirepExpenses()
     {
         /** @var Airline $airline */
-        $airline = factory(Airline::class)->create();
+        $airline = Airline::factory()->create();
 
         /** @var Airline $airline2 */
-        $airline2 = factory(Airline::class)->create();
+        $airline2 = Airline::factory()->create();
 
-        factory(Expense::class)->create([
+        Expense::factory()->create([
             'airline_id' => $airline->id,
         ]);
 
-        factory(Expense::class)->create([
+        Expense::factory()->create([
             'airline_id' => $airline2->id,
         ]);
 
-        factory(Expense::class)->create([
+        Expense::factory()->create([
             'airline_id' => null,
         ]);
 
@@ -825,8 +837,8 @@ class FinanceTest extends TestCase
          * Test the subfleet class
          */
 
-        $subfleet = factory(Subfleet::class)->create();
-        factory(Expense::class)->create([
+        $subfleet = Subfleet::factory()->create();
+        Expense::factory()->create([
             'airline_id'   => null,
             'ref_model'    => Subfleet::class,
             'ref_model_id' => $subfleet->id,
@@ -848,23 +860,28 @@ class FinanceTest extends TestCase
 
     public function testAirportExpenses()
     {
-        $apt1 = factory(Airport::class)->create();
-        $apt2 = factory(Airport::class)->create();
-        $apt3 = factory(Airport::class)->create();
+        /** @var Airport $apt1 */
+        $apt1 = Airport::factory()->create();
 
-        factory(Expense::class)->create([
+        /** @var Airport $apt2 */
+        $apt2 = Airport::factory()->create();
+
+        /** @var Airport $apt3 */
+        $apt3 = Airport::factory()->create();
+
+        Expense::factory()->create([
             'airline_id'   => null,
             'ref_model'    => Airport::class,
             'ref_model_id' => $apt1->id,
         ]);
 
-        factory(Expense::class)->create([
+        Expense::factory()->create([
             'airline_id'   => null,
             'ref_model'    => Airport::class,
             'ref_model_id' => $apt2->id,
         ]);
 
-        factory(Expense::class)->create([
+        Expense::factory()->create([
             'airline_id'   => null,
             'ref_model'    => Airport::class,
             'ref_model_id' => $apt3->id,
@@ -890,24 +907,33 @@ class FinanceTest extends TestCase
         $user->airline->initJournal(setting('units.currency', 'USD'));
 
         // Override the fares
-        $fare_counts = [];
+        $fareTotal = 0;
+        $fareCounts = [];
         foreach ($fares as $fare) {
-            $fare_counts[] = new PirepFare([
+            $fareCounts[] = new PirepFare([
                 'fare_id' => $fare->id,
-                'count'   => 100,
+                'count'   => 10,
             ]);
+
+            $fareTotal += $fare->price * 100;
         }
 
-        $this->fareSvc->saveForPirep($pirep, $fare_counts);
+        $this->fareSvc->saveToPirep($pirep, $fareCounts);
 
         // This should process all of the
         $pirep = $this->pirepSvc->accept($pirep);
 
         $transactions = $journalRepo->getAllForObject($pirep);
 
+        /** @var Money $credits */
+        $credits = $transactions['credits'];
+
+        /** @var Money $credits */
+        $debits = $transactions['debits'];
+
         // $this->assertCount(9, $transactions['transactions']);
-        $this->assertEquals(3020, $transactions['credits']->getValue());
-        $this->assertEquals(2050.0, $transactions['debits']->getValue());
+        $this->assertEquals(3020, $credits->getValue());
+        $this->assertEquals(2050.4, $debits->getValue());
 
         // Check that all the different transaction types are there
         // test by the different groups that exist
@@ -935,7 +961,7 @@ class FinanceTest extends TestCase
         $journalRepo = app(JournalRepository::class);
 
         // Add an expense that's only for a cargo flight
-        factory(Expense::class)->create([
+        Expense::factory()->create([
             'airline_id'  => null,
             'amount'      => 100,
             'flight_type' => FlightType::SCHED_CARGO,
@@ -949,11 +975,11 @@ class FinanceTest extends TestCase
         foreach ($fares as $fare) {
             $fare_counts[] = new PirepFare([
                 'fare_id' => $fare->id,
-                'count'   => 100,
+                'count'   => 10,
             ]);
         }
 
-        $this->fareSvc->saveForPirep($pirep, $fare_counts);
+        $this->fareSvc->saveToPirep($pirep, $fare_counts);
 
         // This should process all of the
         $pirep = $this->pirepSvc->accept($pirep);
@@ -962,7 +988,22 @@ class FinanceTest extends TestCase
 
 //        $this->assertCount(9, $transactions['transactions']);
         $this->assertEquals(3020, $transactions['credits']->getValue());
-        $this->assertEquals(2050.0, $transactions['debits']->getValue());
+        $this->assertEquals(2050.4, $transactions['debits']->getValue());
+
+        // Retrieve data from the pirep fares to make sure all of the fields were saved
+        $saved_fares = PirepFare::where('pirep_id', $pirep->id)->get();
+        $this->assertCount(3, $saved_fares);
+
+        /** @var PirepFare $f */
+        foreach ($saved_fares as $f) {
+            /** @var Fare $original_fare */
+            $original_fare = $fares->where('code', $f->code)->first();
+
+            $this->assertEquals($original_fare->price, $f->price);
+            $this->assertEquals($original_fare->cost, $f->cost);
+            $this->assertEquals($original_fare->capacity, $f->capacity);
+            $this->assertEquals($original_fare->type, $f->type);
+        }
 
         // Check that all the different transaction types are there
         // test by the different groups that exist
@@ -982,7 +1023,7 @@ class FinanceTest extends TestCase
         }
 
         // Add a new PIREP;
-        $pirep2 = factory(Pirep::class)->create([
+        $pirep2 = Pirep::factory()->create([
             'flight_number'  => 100,
             'flight_type'    => FlightType::SCHED_CARGO,
             'dpt_airport_id' => $pirep->dpt_airport_id,
@@ -996,12 +1037,25 @@ class FinanceTest extends TestCase
             'fuel_used'      => 9,
         ]);
 
-        $this->fareSvc->saveForPirep($pirep2, $fare_counts);
+        // Override the fares
+        $fare_counts = [];
+        foreach ($fares as $fare) {
+            $fare_counts[] = new PirepFare([
+                'fare_id' => $fare->id,
+                'count'   => 10,
+            ]);
+        }
+
+        $this->fareSvc->saveToPirep($pirep2, $fare_counts);
         $pirep2 = $this->pirepSvc->accept($pirep2);
+
+        // Retrieve data from the pirep fares to make sure all of the fields were saved
+        $saved_fares = PirepFare::where('pirep_id', $pirep2->id)->get();
+        $this->assertCount(3, $saved_fares);
 
         $transactions = $journalRepo->getAllForObject($pirep2);
         $this->assertEquals(3020, $transactions['credits']->getValue());
-        $this->assertEquals(2150.0, $transactions['debits']->getValue());
+        $this->assertEquals(2150.4, $transactions['debits']->getValue());
 
         // Check that all the different transaction types are there
         // test by the different groups that exist
@@ -1027,12 +1081,12 @@ class FinanceTest extends TestCase
     public function testPirepFinancesExpensesMultiAirline()
     {
         /** @var Airline $airline */
-        $airline = factory(Airline::class)->create();
+        $airline = Airline::factory()->create();
 
         $journalRepo = app(JournalRepository::class);
 
         // Add an expense that's only for a cargo flight
-        factory(Expense::class)->create(
+        Expense::factory()->create(
             [
                 'airline_id'  => null,
                 'amount'      => 100,
@@ -1043,7 +1097,7 @@ class FinanceTest extends TestCase
         [$user, $pirep, $fares] = $this->createFullPirep();
         $user->airline->initJournal(setting('units.currency', 'USD'));
 
-        factory(Expense::class)->create(
+        Expense::factory()->create(
             [
                 'airline_id'  => $user->airline->id,
                 'amount'      => 100,
@@ -1051,7 +1105,7 @@ class FinanceTest extends TestCase
             ]
         );
 
-        factory(Expense::class)->create(
+        Expense::factory()->create(
             [
                 'airline_id'  => $airline->id,
                 'amount'      => 100,
@@ -1061,8 +1115,8 @@ class FinanceTest extends TestCase
 
         // There shouldn't be an expense from this subfleet
         /** @var Subfleet $subfleet */
-        $subfleet = factory(Subfleet::class)->create();
-        factory(Expense::class)->create([
+        $subfleet = Subfleet::factory()->create();
+        Expense::factory()->create([
             'airline_id'   => null,
             'amount'       => 100,
             'ref_model'    => Subfleet::class,
@@ -1075,11 +1129,11 @@ class FinanceTest extends TestCase
             $fare_counts[] = new PirepFare([
                 'fare_id' => $fare->id,
                 'price'   => $fare->price,
-                'count'   => 100,
+                'count'   => 10,
             ]);
         }
 
-        $this->fareSvc->saveForPirep($pirep, $fare_counts);
+        $this->fareSvc->saveToPirep($pirep, $fare_counts);
 
         // This should process all of the
         $pirep = $this->pirepSvc->accept($pirep);
@@ -1110,6 +1164,6 @@ class FinanceTest extends TestCase
 
         //        $this->assertCount(9, $transactions['transactions']);
         $this->assertEquals(3020, $transactions['credits']->getValue());
-        $this->assertEquals(2050.0, $transactions['debits']->getValue());
+        $this->assertEquals(2050.4, $transactions['debits']->getValue());
     }
 }

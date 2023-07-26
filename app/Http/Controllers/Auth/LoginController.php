@@ -7,33 +7,36 @@ use App\Exceptions\PilotIdNotFound;
 use App\Models\Enums\UserState;
 use App\Models\User;
 use App\Services\UserService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 
 class LoginController extends Controller
 {
     use AuthenticatesUsers;
 
-    protected $redirectTo = '/dashboard';
-
-    /** @var UserService */
-    private $userSvc;
+    /**
+     * Where to redirect after logging in
+     */
+    protected mixed $redirectTo = '/dashboard';
 
     /** @var string */
-    private $loginFieldValue;
+    private string $loginFieldValue;
 
     /**
      * LoginController constructor.
      *
      * @param UserService $userSvc
      */
-    public function __construct(UserService $userSvc)
-    {
+    public function __construct(
+        private readonly UserService $userSvc
+    ) {
         $this->redirectTo = config('phpvms.login_redirect');
         $this->middleware('guest', ['except' => 'logout']);
-        $this->userSvc = $userSvc;
     }
 
     /**
@@ -46,7 +49,7 @@ class LoginController extends Controller
      *
      * @return array
      */
-    protected function credentials(Request $request)
+    protected function credentials(Request $request): array
     {
         return [
             'email'    => $this->loginFieldValue,
@@ -63,7 +66,7 @@ class LoginController extends Controller
      *
      * @return void
      */
-    protected function validateLogin(Request $request)
+    protected function validateLogin(Request $request): void
     {
         $id_field = $request->input('email');
         $validations = ['required', 'string'];
@@ -101,15 +104,16 @@ class LoginController extends Controller
     /**
      * @param Request $request
      *
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\Http\RedirectResponse|\Illuminate\View\View
+     * @return RedirectResponse|View
      */
-    protected function sendLoginResponse(Request $request)
+    protected function sendLoginResponse(Request $request): RedirectResponse|View
     {
         /** @var User $user */
         $user = Auth::user();
 
         if (setting('general.record_user_ip', true)) {
             $user->last_ip = $request->ip();
+            $user->lastlogin_at = Carbon::now();
             $user->save();
         }
 

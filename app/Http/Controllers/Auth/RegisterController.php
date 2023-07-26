@@ -11,12 +11,16 @@ use App\Repositories\AirlineRepository;
 use App\Repositories\AirportRepository;
 use App\Services\UserService;
 use App\Support\Countries;
+use App\Support\HttpClient;
 use App\Support\Timezonelist;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Validator as ValidatorFacade;
+use Illuminate\View\View;
 
 class RegisterController extends Controller
 {
@@ -29,25 +33,20 @@ class RegisterController extends Controller
      */
     protected $redirectTo = '/';
 
-    private $airlineRepo;
-    private $airportRepo;
-    private $userService;
-
     /**
      * RegisterController constructor.
      *
      * @param AirlineRepository $airlineRepo
      * @param AirportRepository $airportRepo
      * @param UserService       $userService
+     * @param HttpClient        $httpClient
      */
     public function __construct(
-        AirlineRepository $airlineRepo,
-        AirportRepository $airportRepo,
-        UserService $userService
+        private readonly AirlineRepository $airlineRepo,
+        private readonly AirportRepository $airportRepo,
+        private readonly HttpClient $httpClient,
+        private readonly UserService $userService,
     ) {
-        $this->airlineRepo = $airlineRepo;
-        $this->airportRepo = $airportRepo;
-        $this->userService = $userService;
         $this->middleware('guest');
 
         $this->redirectTo = config('phpvms.registration_redirect');
@@ -56,9 +55,9 @@ class RegisterController extends Controller
     /**
      * @throws \Exception
      *
-     * @return mixed
+     * @return View
      */
-    public function showRegistrationForm()
+    public function showRegistrationForm(): View
     {
         $airports = $this->airportRepo->selectBoxList(false, setting('pilots.home_hubs_only'));
         $airlines = $this->airlineRepo->selectBoxList();
@@ -70,6 +69,11 @@ class RegisterController extends Controller
             'countries'  => Countries::getSelectList(),
             'timezones'  => Timezonelist::toArray(),
             'userFields' => $userFields,
+            'captcha'    => [
+                'enabled'    => setting('captcha.enabled', env('CAPTCHA_ENABLED', false)),
+                'site_key'   => setting('captcha.site_key', env('CAPTCHA_SITE_KEY')),
+                'secret_key' => setting('captcha.secret_key', env('CAPTCHA_SECRET_KEY')),
+            ],
         ]);
     }
 
@@ -78,9 +82,9 @@ class RegisterController extends Controller
      *
      * @param array $data
      *
-     * @return \Illuminate\Contracts\Validation\Validator
+     * @return Validator
      */
-    protected function validator(array $data)
+    protected function validator(array $data): Validator
     {
         $rules = [
             'name'            => 'required|max:255',
@@ -102,11 +106,28 @@ class RegisterController extends Controller
             $rules['field_'.$field->slug] = 'required';
         }
 
-        if (config('captcha.enabled')) {
-            $rules['g-recaptcha-response'] = 'required|captcha';
+        /*
+         * Validation for hcaptcha
+         */
+        $captcha_enabled = setting('captcha.enabled', env('CAPTCHA_ENABLED', false));
+        if ($captcha_enabled === true) {
+            $rules['h-captcha-response'] = [
+                'required',
+                function ($attribute, $value, $fail) {
+                    $response = $this->httpClient->form_post('https://hcaptcha.com/siteverify', [
+                        'secret'   => setting('captcha.secret_key', env('CAPTCHA_SECRET_KEY')),
+                        'response' => $value,
+                    ]);
+
+                    if ($response['success'] !== true) {
+                        Log::error('Captcha failed '.json_encode($response));
+                        $fail('Captcha verification failed, please try again.');
+                    }
+                },
+            ];
         }
 
-        return Validator::make($data, $rules);
+        return ValidatorFacade::make($data, $rules);
     }
 
     /**
@@ -114,8 +135,8 @@ class RegisterController extends Controller
      *
      * @param array $opts
      *
-     * @throws \RuntimeException
      * @throws \Exception
+     * @throws \RuntimeException
      *
      * @return User
      */
@@ -157,9 +178,9 @@ class RegisterController extends Controller
      *
      * @throws \Exception
      *
-     * @return mixed
+     * @return RedirectResponse|View
      */
-    public function register(Request $request)
+    public function register(Request $request): RedirectResponse|View
     {
         $this->validator($request->all())->validate();
 

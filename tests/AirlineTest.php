@@ -2,6 +2,8 @@
 
 namespace Tests;
 
+use App\Models\Airline;
+use App\Models\Journal;
 use App\Services\AirlineService;
 
 class AirlineTest extends TestCase
@@ -19,15 +21,23 @@ class AirlineTest extends TestCase
 
     public function testAddAirline()
     {
-        $attrs = factory(\App\Models\Airline::class)->make([
+        $attrs = \App\Models\Airline::factory()->make([
             'iata' => '',
         ])->toArray();
 
         $airline = $this->airlineSvc->createAirline($attrs);
         $this->assertNotNull($airline);
 
+        // Ensure only a single journal is created
+        $journals = Journal::where([
+            'morphed_type' => Airline::class,
+            'morphed_id'   => $airline->id,
+        ])->get();
+
+        $this->assertCount(1, $journals);
+
         // Add another airline, also blank IATA
-        $attrs = factory(\App\Models\Airline::class)->make([
+        $attrs = \App\Models\Airline::factory()->make([
             'iata' => '',
         ])->toArray();
         $airline = $this->airlineSvc->createAirline($attrs);
@@ -39,8 +49,8 @@ class AirlineTest extends TestCase
      */
     public function testDeleteAirlineWithFlight()
     {
-        $airline = factory(\App\Models\Airline::class)->create();
-        factory(\App\Models\Flight::class)->create([
+        $airline = \App\Models\Airline::factory()->create();
+        \App\Models\Flight::factory()->create([
             'airline_id' => $airline->id,
         ]);
 
@@ -52,8 +62,8 @@ class AirlineTest extends TestCase
      */
     public function testDeleteAirlineWithPirep()
     {
-        $airline = factory(\App\Models\Airline::class)->create();
-        factory(\App\Models\Pirep::class)->create([
+        $airline = \App\Models\Airline::factory()->create();
+        \App\Models\Pirep::factory()->create([
             'airline_id' => $airline->id,
         ]);
 

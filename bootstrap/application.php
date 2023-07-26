@@ -73,7 +73,7 @@ class application extends Illuminate\Foundation\Application
     public function setPublicPath($publicDirPath)
     {
         $this->publicDirPath = $publicDirPath;
-        $this->instance('path.public', $publicDirPath);
+        app()->usePublicPath($publicDirPath);
     }
 
     /**
@@ -104,18 +104,14 @@ class application extends Illuminate\Foundation\Application
         return $this->basePath.DS.'config'.($path ? DS.$path : $path);
     }
 
-    public function langPath()
+    public function langPath($path = '')
     {
         return $this->resourcePath().DS.'lang';
     }
 
-    public function publicPath()
+    public function publicPath($path = '')
     {
-        if (empty($this->publicDirPath)) {
-            return $this->basePath.DS.'public';
-        }
-
-        return $this->publicDirPath;
+        return $this->joinPaths($this->publicDirPath ?: $this->basePath.DS.'public', $path);
     }
 
     public function resourcePath($path = '')

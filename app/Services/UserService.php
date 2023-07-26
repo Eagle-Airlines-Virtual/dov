@@ -28,16 +28,11 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+
 use function is_array;
 
 class UserService extends Service
 {
-    private $aircraftRepo;
-    private $airlineRepo;
-    private $fareSvc;
-    private $subfleetRepo;
-    private $userRepo;
-
     /**
      * @param AircraftRepository $aircraftRepo
      * @param AirlineRepository  $airlineRepo
@@ -46,17 +41,12 @@ class UserService extends Service
      * @param UserRepository     $userRepo
      */
     public function __construct(
-        AircraftRepository $aircraftRepo,
-        AirlineRepository $airlineRepo,
-        FareService $fareSvc,
-        SubfleetRepository $subfleetRepo,
-        UserRepository $userRepo
+        private readonly AircraftRepository $aircraftRepo,
+        private readonly AirlineRepository $airlineRepo,
+        private readonly FareService $fareSvc,
+        private readonly SubfleetRepository $subfleetRepo,
+        private readonly UserRepository $userRepo
     ) {
-        $this->aircraftRepo = $aircraftRepo;
-        $this->airlineRepo = $airlineRepo;
-        $this->fareSvc = $fareSvc;
-        $this->subfleetRepo = $subfleetRepo;
-        $this->userRepo = $userRepo;
     }
 
     /**
@@ -141,7 +131,7 @@ class UserService extends Service
     public function removeUser(User $user)
     {
         // Detach all roles from this user
-        $user->detachRoles($user->roles);
+        $user->removeRoles($user->roles->toArray());
 
         // Delete any fields which might have personal information
         UserFieldValue::where('user_id', $user->id)->delete();
@@ -173,7 +163,7 @@ class UserService extends Service
     public function addUserToRole(User $user, string $roleName): User
     {
         $role = Role::where(['name' => $roleName])->first();
-        $user->attachRole($role);
+        $user->addRole($role);
 
         return $user;
     }
@@ -373,7 +363,7 @@ class UserService extends Service
         }
 
         // @var Collection $subfleets
-        $subfleets = $this->subfleetRepo->when(($restrict_rank || $restrict_type), function ($query) use ($restricted_to) {
+        $subfleets = $this->subfleetRepo->when($restrict_rank || $restrict_type, function ($query) use ($restricted_to) {
             return $query->whereIn('id', $restricted_to);
         })->with('aircraft')->get();
 

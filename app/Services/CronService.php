@@ -12,12 +12,9 @@ use Symfony\Component\Process\PhpExecutableFinder;
 
 class CronService extends Service
 {
-    private $kvpRepo;
-
     public function __construct(
-        KvpRepository $kvpRepo
+        private readonly KvpRepository $kvpRepo
     ) {
-        $this->kvpRepo = $kvpRepo;
     }
 
     /**
@@ -39,8 +36,7 @@ class CronService extends Service
 
         $path = [
             $php_exec,
-            base_path('artisan'),
-            'schedule:run',
+            base_path('bin/cron'),
         ];
 
         return implode(' ', $path);

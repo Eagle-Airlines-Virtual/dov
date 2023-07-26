@@ -4,6 +4,7 @@ namespace Tests;
 
 use App\Repositories\KvpRepository;
 use App\Support\ICAO;
+use App\Support\Units\Distance;
 use App\Support\Units\Time;
 use App\Support\Utils;
 use Carbon\Carbon;
@@ -14,6 +15,51 @@ class UtilsTest extends TestCase
     {
         $carbon = new Carbon('2018-04-28T12:55:40Z');
         $this->assertNotNull($carbon);
+    }
+
+    /**
+     * @throws \PhpUnitsOfMeasure\Exception\NonNumericValue
+     * @throws \PhpUnitsOfMeasure\Exception\NonStringUnitName
+     */
+    public function testUnitRounding()
+    {
+        $this->updateSetting('units.distance', 'km');
+
+        $alt = new Distance(1065.3456, 'nmi');
+
+        $km = $alt->toUnit('km');
+        $this->assertEqualsWithDelta(1973.0200512, $km, 0.1);
+
+        $km = $alt->toUnit('km', 2);
+        $this->assertEqualsWithDelta(1973.02, $km, 0.1);
+
+        $km = $alt->toUnit('km', 0);
+        $this->assertEqualsWithDelta(1973, $km, 0.1);
+
+        /*
+         * Test local conversions
+         */
+
+        $km = $alt->local();
+        $this->assertEqualsWithDelta(1973.0200512, $km, 0.1);
+
+        $km = $alt->local(0);
+        $this->assertEqualsWithDelta(1973, $km, 0.1);
+
+        $km = $alt->local(2);
+        $this->assertEqualsWithDelta(1973.02, $km, 0.1);
+
+        /*
+         * Internal units, shouldn't do a conversion
+         */
+        $int = $alt->internal();
+        $this->assertEqualsWithDelta(1065.3456, $int, 0.1);
+
+        $int = $alt->internal(2);
+        $this->assertEqualsWithDelta(1065.35, $int, 0.1);
+
+        $int = $alt->internal(0);
+        $this->assertEqualsWithDelta(1065, $int, 0.1);
     }
 
     /**

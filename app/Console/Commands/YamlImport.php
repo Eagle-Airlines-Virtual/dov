@@ -12,7 +12,11 @@ class YamlImport extends Command
 {
     protected $signature = 'phpvms:yaml-import {files*}';
     protected $description = 'Developer commands';
-    protected $dbSvc;
+
+    /**
+     * @var DatabaseService
+     */
+    protected DatabaseService $dbSvc;
 
     /**
      * YamlImport constructor.
@@ -36,7 +40,7 @@ class YamlImport extends Command
         $files = $this->argument('files');
         if (empty($files)) {
             $this->error('No files to import specified!');
-            exit();
+            exit;
         }
 
         $ignore_errors = true;

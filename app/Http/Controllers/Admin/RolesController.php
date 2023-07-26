@@ -8,32 +8,26 @@ use App\Http\Requests\UpdateRoleRequest;
 use App\Repositories\PermissionsRepository;
 use App\Repositories\RoleRepository;
 use App\Services\RoleService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Illuminate\View\View;
 use Laracasts\Flash\Flash;
 use Prettus\Repository\Criteria\RequestCriteria;
 
 class RolesController extends Controller
 {
-    private $permsRepo;
-    private $rolesRepo;
-    private $roleSvc;
-
     /**
      * AirlinesController constructor.
      *
      * @param PermissionsRepository $permsRepo
      * @param RoleRepository        $rolesRepo
-     * @param                       $roleSvc
+     * @param RoleService           $roleSvc
      */
     public function __construct(
-        PermissionsRepository $permsRepo,
-        RoleRepository $rolesRepo,
-        RoleService $roleSvc
+        private readonly PermissionsRepository $permsRepo,
+        private readonly RoleRepository $rolesRepo,
+        private readonly RoleService $roleSvc
     ) {
-        $this->permsRepo = $permsRepo;
-        $this->rolesRepo = $rolesRepo;
-        $this->roleSvc = $roleSvc;
     }
 
     /**
@@ -43,12 +37,12 @@ class RolesController extends Controller
      *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
      *
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return View
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $this->rolesRepo->pushCriteria(new RequestCriteria($request));
-        $roles = $this->rolesRepo->findWhere(['read_only' => false]);
+        $roles = $this->rolesRepo->withCount('users')->findWhere(['read_only' => false]);
 
         return view('admin.roles.index', [
             'roles' => $roles,
@@ -58,7 +52,7 @@ class RolesController extends Controller
     /**
      * Show the form for creating a new Airlines.
      */
-    public function create()
+    public function create(): View
     {
         return view('admin.roles.create', [
             'permissions' => $this->permsRepo->all(),
@@ -72,9 +66,9 @@ class RolesController extends Controller
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
      *
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     * @return RedirectResponse
      */
-    public function store(CreateRoleRequest $request)
+    public function store(CreateRoleRequest $request): RedirectResponse
     {
         $input = $request->all();
 
@@ -92,9 +86,9 @@ class RolesController extends Controller
      *
      * @param int $id
      *
-     * @return mixed
+     * @return RedirectResponse|View
      */
-    public function show($id)
+    public function show(int $id): RedirectResponse|View
     {
         $roles = $this->rolesRepo->findWithoutFail($id);
 
@@ -113,11 +107,11 @@ class RolesController extends Controller
      *
      * @param int $id
      *
-     * @return Response
+     * @return RedirectResponse|View
      */
-    public function edit($id)
+    public function edit(int $id): RedirectResponse|View
     {
-        $role = $this->rolesRepo->findWithoutFail($id);
+        $role = $this->rolesRepo->withCount('users')->with('users')->findWithoutFail($id);
 
         if (empty($role)) {
             Flash::error('Role not found');
@@ -126,6 +120,8 @@ class RolesController extends Controller
 
         return view('admin.roles.edit', [
             'role'        => $role,
+            'users'       => $role->users,
+            'users_count' => $role->users_count,
             'permissions' => $this->permsRepo->all(),
         ]);
     }
@@ -136,9 +132,9 @@ class RolesController extends Controller
      * @param int               $id
      * @param UpdateRoleRequest $request
      *
-     * @return Response
+     * @return RedirectResponse
      */
-    public function update($id, UpdateRoleRequest $request)
+    public function update(int $id, UpdateRoleRequest $request): RedirectResponse
     {
         $role = $this->rolesRepo->findWithoutFail($id);
 
@@ -159,9 +155,9 @@ class RolesController extends Controller
      *
      * @param int $id
      *
-     * @return Response
+     * @return RedirectResponse
      */
-    public function destroy($id)
+    public function destroy(int $id): RedirectResponse
     {
         $roles = $this->rolesRepo->findWithoutFail($id);
 

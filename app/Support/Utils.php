@@ -20,7 +20,7 @@ class Utils
      *
      * @return string
      */
-    public static function generateNewId(int $length = null)
+    public static function generateNewId(int $length = null): string
     {
         if (!$length) {
             $length = Model::ID_MAX_LENGTH;
@@ -38,8 +38,7 @@ class Utils
      */
     public static function generateApiKey(): string
     {
-        $key = substr(sha1(time().mt_rand()), 0, 20);
-        return $key;
+        return substr(sha1(time().mt_rand()), 0, 20);
     }
 
     /**
@@ -126,10 +125,10 @@ class Utils
             $parsed_url = substr($parsed_url, 0, strlen($parsed_url) - 1);
         }
 
-        $rules = Rules::createFromPath(resource_path('tld/public_suffix_list.dat'));
+        $rules = Rules::fromPath(resource_path('tld/public_suffix_list.dat'));
         $domain = $rules->resolve($parsed_url);
 
-        $val = $domain->getRegistrableDomain();
+        $val = $domain->registrableDomain()->toString();
         if (!empty($val)) {
             return $val;
         }

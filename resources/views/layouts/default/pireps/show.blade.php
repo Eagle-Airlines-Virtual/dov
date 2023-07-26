@@ -72,16 +72,18 @@
         </div>
       </div>
 
-      <div class="row">
-        <div class="col-12">
-          <div class="progress" style="margin: 20px 0;">
-            <div class="progress-bar progress-bar-success" role="progressbar"
-                 aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"
-                 style="width: {{$pirep->progress_percent}}%;">
+      @if(!empty($pirep->distance))
+        <div class="row">
+          <div class="col-12">
+            <div class="progress" style="margin: 20px 0;">
+              <div class="progress-bar progress-bar-success" role="progressbar"
+                  aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"
+                  style="width: {{$pirep->progress_percent}}%;">
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      @endif
 
       <div class="row">
         <div class="col-12">
@@ -178,14 +180,11 @@
         </table>
       @endif
 
-      @if(count($pirep->fares) > 0)
-        <div class="separator"></div>
-      @endif
-
       {{--
           Show the fares that have been entered
       --}}
       @if(count($pirep->fares) > 0)
+        <div class="separator"></div>
         <div class="row">
           <div class="col-12">
             <h5>{{ trans_choice('pireps.fare', 2) }}</h5>
@@ -197,7 +196,7 @@
               <tbody>
               @foreach($pirep->fares as $fare)
                 <tr>
-                  <td>{{ $fare->fare->name }} ({{ $fare->fare->code }})</td>
+                  <td>{{ $fare->name }} ({{ $fare->code }})</td>
                   <td>{{ $fare->count }}</td>
                 </tr>
               @endforeach

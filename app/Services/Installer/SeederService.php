@@ -11,24 +11,22 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Yaml\Yaml;
+
 use function trim;
 
 class SeederService extends Service
 {
-    private $databaseSvc;
-
-    private $counters = [];
-    private $offsets = [];
+    private array $counters = [];
+    private array $offsets = [];
 
     // Map an environment to a seeder directory, if we want to share
     public static $seed_mapper = [
-        'local'      => 'dev',
         'production' => 'prod',
     ];
 
-    public function __construct(DatabaseService $databaseSvc)
-    {
-        $this->databaseSvc = $databaseSvc;
+    public function __construct(
+        private readonly DatabaseService $databaseSvc
+    ) {
     }
 
     /**

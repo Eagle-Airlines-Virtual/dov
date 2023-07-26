@@ -4,16 +4,19 @@ namespace App\Models;
 
 use App\Models\Enums\JournalType;
 use App\Models\Traits\JournalTrait;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laratrust\Traits\LaratrustUserTrait;
+use Laratrust\Contracts\LaratrustUser;
+use Laratrust\Traits\HasRolesAndPermissions;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
-use Tymon\JWTAuth\Contracts\JWTSubject;
 
 /**
  * @property int              id
  * @property int              pilot_id
  * @property int              airline_id
+ * @property string           callsign
  * @property string           name
  * @property string           name_private Only first name, rest are initials
  * @property string           email
@@ -37,6 +40,7 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
  * @property string           discord_id
  * @property int              state
  * @property string           last_ip
+ * @property \Carbon\Carbon   lastlogin_at
  * @property bool             opt_in
  * @property Pirep[]          pireps
  * @property string           last_pirep_id
@@ -48,14 +52,15 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
  *
  * @mixin \Illuminate\Database\Eloquent\Builder
  * @mixin \Illuminate\Notifications\Notifiable
- * @mixin \Laratrust\Traits\LaratrustUserTrait
+ * @mixin \Laratrust\Traits\HasRolesAndPermissions
  */
-class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable implements LaratrustUser
 {
-    use JournalTrait;
-    use LaratrustUserTrait;
-    use Notifiable;
+    use HasFactory;
     use HasRelationships;
+    use HasRolesAndPermissions;
+    use JournalTrait;
+    use Notifiable;
 
     public $table = 'users';
 
@@ -70,6 +75,7 @@ class User extends Authenticatable implements JWTSubject
         'email',
         'password',
         'pilot_id',
+        'callsign',
         'airline_id',
         'rank_id',
         'discord_id',
@@ -89,6 +95,8 @@ class User extends Authenticatable implements JWTSubject
         'toc_accepted',
         'opt_in',
         'last_ip',
+        'lastlogin_at',
+        'notes',
         'created_at',
         'updated_at',
     ];
@@ -98,10 +106,14 @@ class User extends Authenticatable implements JWTSubject
      */
     protected $hidden = [
         'api_key',
+        'email',
+        'name',
         'discord_id',
+        'discord_private_channel_id',
         'password',
         'last_ip',
         'remember_token',
+        'notes',
     ];
 
     protected $casts = [
@@ -115,96 +127,98 @@ class User extends Authenticatable implements JWTSubject
         'status'        => 'integer',
         'toc_accepted'  => 'boolean',
         'opt_in'        => 'boolean',
+        'lastlogin_at'  => 'datetime',
+        'deleted_at'    => 'datetime',
     ];
 
     public static $rules = [
         'name'     => 'required',
         'email'    => 'required|email',
         'pilot_id' => 'required|integer',
+        'callsign' => 'nullable|max:4',
     ];
 
-
     /**
-     * Get the identifier that will be stored in the subject claim of the JWT.
+     * Format the pilot ID/ident
      *
-     * @return mixed
+     * @return Attribute
      */
-    public function getJWTIdentifier()
+    public function ident(): Attribute
     {
-        return $this->getKey();
+        return Attribute::make(
+            get: function ($_, $attrs) {
+                $length = setting('pilots.id_length');
+                $ident_code = filled(setting('pilots.id_code')) ? setting(
+                    'pilots.id_code'
+                ) : optional($this->airline)->icao;
+
+                return $ident_code.str_pad($attrs['pilot_id'], $length, '0', STR_PAD_LEFT);
+            }
+        );
     }
 
     /**
-     * Return a key value array, containing any custom claims to be added to the JWT.
+     * Return a "privatized" version of someones name - First and middle names full, last name initials
      *
-     * @return array
+     * @return Attribute
      */
-    public function getJWTCustomClaims(): array
+    public function namePrivate(): Attribute
     {
-        return [];
+        return Attribute::make(
+            get: function ($_, $attrs) {
+                $name_parts = explode(' ', $attrs['name']);
+                $count = count($name_parts);
+                if ($count === 1) {
+                    return $name_parts[0];
+                }
+
+                $gdpr_name = '';
+                $last_name = $name_parts[$count - 1];
+                $loop_count = 0;
+
+                while ($loop_count < ($count - 1)) {
+                    $gdpr_name .= $name_parts[$loop_count].' ';
+                    $loop_count++;
+                }
+
+                $gdpr_name .= mb_substr($last_name, 0, 1);
+
+                return mb_convert_case($gdpr_name, MB_CASE_TITLE);
+            }
+        );
     }
 
     /**
-     * @return string
-     */
-    public function getIdentAttribute(): string
-    {
-        $length = setting('pilots.id_length');
-
-        return optional($this->airline)->icao.str_pad($this->pilot_id, $length, '0', STR_PAD_LEFT);
-    }
-
-    /**
-     * Return a "privatized" version of someones name - First name full, rest of the names are initials
+     * Shortcut for timezone
      *
-     * @return string
+     * @return Attribute
      */
-    public function getNamePrivateAttribute(): string
+    public function tz(): Attribute
     {
-        $name_parts = explode(' ', $this->attributes['name']);
-        $count = count($name_parts);
-        if ($count === 1) {
-            return $name_parts[0];
-        }
-
-        $first_name = $name_parts[0];
-        $last_name = $name_parts[$count - 1];
-
-        return $first_name.' '.$last_name[0];
-    }
-
-    /**
-     * Shorthand for getting the timezone
-     *
-     * @return string
-     */
-    public function getTzAttribute(): string
-    {
-        return $this->timezone;
-    }
-
-    /**
-     * Shorthand for setting the timezone
-     *
-     * @param $value
-     */
-    public function setTzAttribute($value)
-    {
-        $this->attributes['timezone'] = $value;
+        return Attribute::make(
+            get: fn ($_, $attrs) => $attrs['timezone'],
+            set: fn ($value) => [
+                'timezone' => $value,
+            ]
+        );
     }
 
     /**
      * Return a File model
      */
-    public function getAvatarAttribute()
+    public function avatar(): Attribute
     {
-        if (!$this->attributes['avatar']) {
-            return null;
-        }
+        return Attribute::make(
+            get: function ($_, $attrs) {
+                if (!$attrs['avatar']) {
+                    return null;
+                }
 
-        return new File([
-            'path' => $this->attributes['avatar'],
-        ]);
+                return new File([
+                    'path' => $attrs['avatar'],
+                ]);
+            }
+        );
     }
 
     /**
@@ -227,10 +241,12 @@ class User extends Authenticatable implements JWTSubject
 
     public function resolveAvatarUrl()
     {
-        $avatar = $this->getAvatarAttribute();
+        /** @var File $avatar */
+        $avatar = $this->avatar;
         if (empty($avatar)) {
             return $this->gravatar();
         }
+
         return $avatar->url;
     }
 
@@ -292,11 +308,19 @@ class User extends Authenticatable implements JWTSubject
 
     public function typeratings()
     {
-        return $this->belongsToMany(Typerating::class, 'typerating_user', 'user_id', 'typerating_id');
+        return $this->belongsToMany(
+            Typerating::class,
+            'typerating_user',
+            'user_id',
+            'typerating_id'
+        );
     }
 
     public function rated_subfleets()
     {
-        return $this->hasManyDeep(Subfleet::class, ['typerating_user', Typerating::class, 'typerating_subfleet']);
+        return $this->hasManyDeep(
+            Subfleet::class,
+            ['typerating_user', Typerating::class, 'typerating_subfleet']
+        );
     }
 }

@@ -11,6 +11,7 @@ use Exception;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -22,12 +23,12 @@ use PharData;
 
 class ModuleService extends Service
 {
-    protected static $adminLinks = [];
+    protected static array $adminLinks = [];
 
     /**
      * @var array 0 == logged out, 1 == logged in
      */
-    protected static $frontendLinks = [
+    protected static array $frontendLinks = [
         0 => [],
         1 => [],
     ];
@@ -40,7 +41,7 @@ class ModuleService extends Service
      * @param string $icon
      * @param bool   $logged_in
      */
-    public function addFrontendLink(string $title, string $url, string $icon = 'pe-7s-users', $logged_in = true)
+    public function addFrontendLink(string $title, string $url, string $icon = 'pe-7s-users', bool $logged_in = true)
     {
         self::$frontendLinks[$logged_in][] = [
             'title' => $title,
@@ -56,7 +57,7 @@ class ModuleService extends Service
      *
      * @return array
      */
-    public function getFrontendLinks($logged_in): array
+    public function getFrontendLinks(mixed $logged_in): array
     {
         return self::$frontendLinks[$logged_in];
     }
@@ -285,6 +286,10 @@ class ModuleService extends Service
     public function updateModule($id, $status): bool
     {
         $module = Module::find($id);
+
+        $cache = config('cache.keys.MODULES');
+        Cache::forget($cache['key'].'.'.$module->name);
+
         $module->update([
             'enabled' => $status,
         ]);

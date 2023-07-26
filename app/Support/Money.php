@@ -10,7 +10,7 @@ use Akaunting\Money\Money as MoneyBase;
  */
 class Money
 {
-    public $money;
+    public MoneyBase $money;
     public $subunit_amount;
     public static $iso_currencies;
     public static $subunit_multiplier;
@@ -33,7 +33,7 @@ class Money
     /**
      * Create from a dollar amount
      *
-     * @param mixed $amount The amount in pennies
+     * @param mixed $amount The amount in dollar
      *
      * @throws \UnexpectedValueException
      * @throws \InvalidArgumentException
@@ -52,12 +52,12 @@ class Money
      *
      * @param mixed $amount
      *
-     * @return float|int
+     * @return int
      */
     public static function convertToSubunit($amount)
     {
         $currency = setting('units.currency', 'USD');
-        return (int) $amount * config('money.'.$currency.'.subunit');
+        return (int) ($amount * config('money.'.$currency.'.subunit'));
     }
 
     /**

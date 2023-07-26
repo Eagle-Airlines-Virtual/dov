@@ -19,29 +19,21 @@ use App\Services\ModuleService;
 use App\Services\SimBriefService;
 use App\Services\UserService;
 use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 class SimBriefController
 {
-    private $fareSvc;
-    private $flightRepo;
-    private $moduleSvc;
-    private $simBriefSvc;
-    private $userSvc;
-
     public function __construct(
-        FareService $fareSvc,
-        FlightRepository $flightRepo,
-        ModuleService $moduleSvc,
-        SimBriefService $simBriefSvc,
-        UserService $userSvc
+        private readonly FareService $fareSvc,
+        private readonly FlightRepository $flightRepo,
+        private readonly ModuleService $moduleSvc,
+        private readonly SimBriefService $simBriefSvc,
+        private readonly UserService $userSvc
     ) {
-        $this->fareSvc = $fareSvc;
-        $this->flightRepo = $flightRepo;
-        $this->moduleSvc = $moduleSvc;
-        $this->simBriefSvc = $simBriefSvc;
-        $this->userSvc = $userSvc;
     }
 
     /**
@@ -51,9 +43,9 @@ class SimBriefController
      *
      * @throws \Exception
      *
-     * @return mixed
+     * @return RedirectResponse|View
      */
-    public function generate(Request $request)
+    public function generate(Request $request): RedirectResponse|View
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
@@ -80,7 +72,6 @@ class SimBriefController
 
         // No aircraft selected, show selection form
         if (!$aircraft_id) {
-
             // Get user's allowed subfleets and intersect it with flight subfleets
             // so we will have a proper list which the user is allowed to fly
             $user_subfleets = $this->userSvc->getAllowableSubfleets($user)->pluck('id')->toArray();
@@ -248,9 +239,9 @@ class SimBriefController
      *
      * @param string $id The OFP ID
      *
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector|\Illuminate\View\View
+     * @return RedirectResponse|View
      */
-    public function briefing($id)
+    public function briefing(string $id): RedirectResponse|View
     {
         /** @var User $user */
         $user = Auth::user();
@@ -292,9 +283,9 @@ class SimBriefController
      *
      * @throws \Exception
      *
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     * @return RedirectResponse
      */
-    public function generate_new(Request $request)
+    public function generate_new(Request $request): RedirectResponse
     {
         $simbrief = SimBrief::find($request->id);
 
@@ -322,9 +313,9 @@ class SimBriefController
      *
      * @param \Illuminate\Http\Request $request
      *
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     * @return RedirectResponse
      */
-    public function prefile(Request $request)
+    public function prefile(Request $request): RedirectResponse
     {
         $sb = SimBrief::find($request->id);
         if (!$sb) {
@@ -341,9 +332,9 @@ class SimBriefController
      *
      * @param \Illuminate\Http\Request $request
      *
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     * @return RedirectResponse
      */
-    public function cancel(Request $request)
+    public function cancel(Request $request): RedirectResponse
     {
         $sb = SimBrief::find($request->id);
         if (!$sb) {
@@ -359,9 +350,9 @@ class SimBriefController
      *
      * @param \Illuminate\Http\Request $request
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function check_ofp(Request $request)
+    public function check_ofp(Request $request): JsonResponse
     {
         /** @var User $user */
         $user = Auth::user();
@@ -385,8 +376,12 @@ class SimBriefController
      * Get the latest generated OFP. Pass in two additional items, the Simbrief userid and static_id
      * This will get the latest edited/regenerated of from Simbrief and update our records
      * We do not need to send the fares again, so used an empty array
+     *
+     * @param Request $request
+     *
+     * @return RedirectResponse|JsonResponse
      */
-    public function update_ofp(Request $request)
+    public function update_ofp(Request $request): RedirectResponse|JsonResponse
     {
         /** @var User $user */
         $user = Auth::user();
@@ -413,9 +408,9 @@ class SimBriefController
      *
      * @throws \Exception
      *
-     * @return \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     * @return RedirectResponse|JsonResponse
      */
-    public function api_code(Request $request)
+    public function api_code(Request $request): RedirectResponse|JsonResponse
     {
         $apiKey = setting('simbrief.api_key', null);
         if (empty($apiKey)) {

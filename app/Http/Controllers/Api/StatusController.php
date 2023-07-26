@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Contracts\Controller;
-use PragmaRX\Version\Package\Facade as Version;
+use App\Services\VersionService;
+use Illuminate\Http\JsonResponse;
 
 /**
  * Class StatusController
@@ -11,12 +12,20 @@ use PragmaRX\Version\Package\Facade as Version;
 class StatusController extends Controller
 {
     /**
-     * @return \Illuminate\Http\JsonResponse
+     * @param VersionService $versionSvc
      */
-    public function status()
+    public function __construct(
+        private readonly VersionService $versionSvc
+    ) {
+    }
+
+    /**
+     * @return JsonResponse
+     */
+    public function status(): JsonResponse
     {
         return response()->json([
-            'version' => Version::compact(),
+            'version' => $this->versionSvc->getCurrentVersion(true),
             'php'     => PHP_VERSION,
         ]);
     }

@@ -5,9 +5,15 @@ namespace App\Http\Controllers\Frontend;
 use App\Contracts\Controller;
 use App\Models\Airline;
 use App\Models\File;
-use Auth;
-use Flash;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
+use Laracasts\Flash\Flash;
+use Nwidart\Modules\Exceptions\ModuleNotFoundException;
+use Nwidart\Modules\Facades\Module;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Class DownloadController
@@ -16,8 +22,10 @@ class DownloadController extends Controller
 {
     /**
      * Show all of the available files
+     *
+     * @return View
      */
-    public function index()
+    public function index(): View
     {
         $airlines = Airline::where('active', 1)->count();
         $files = File::orderBy('ref_model', 'asc')->get();
@@ -26,9 +34,7 @@ class DownloadController extends Controller
          * Group all the files but compound the model with the ID,
          * since we can have multiple files for every `ref_model`
          */
-        $grouped_files = $files->groupBy(function ($item, $key) {
-            return $item['ref_model'].'_'.$item['ref_model_id'];
-        });
+        $grouped_files = $files->groupBy(fn ($item, $key) => $item['ref_model'].'_'.$item['ref_model_id']);
 
         /**
          * The $group here looks like: App\Models\Airport_KAUS
@@ -62,6 +68,19 @@ class DownloadController extends Controller
             }
         }
 
+        // See if they inserted a link to the ACARS download
+        try {
+            Module::findOrFail('VMSAcars');
+            $downloadUrl = DB::table('vmsacars_config')->where(['id' => 'download_url'])->first();
+            if (!empty($downloadUrl) && !empty($downloadUrl->value)) {
+                $regrouped_files['ACARS'] = collect([
+                    new File(['id' => 'vmsacars', 'name' => 'ACARS Client']),
+                ]);
+            }
+        } catch (ModuleNotFoundException) {
+            // noop, don't insert the ACARS download
+        }
+
         ksort($regrouped_files, SORT_STRING);
 
         return view('downloads.index', [
@@ -70,21 +89,38 @@ class DownloadController extends Controller
     }
 
     /**
-     * Show the application dashboard
+     * Download a specific file
      *
      * @param string $id
      *
-     * @return mixed
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector|\Symfony\Component\HttpFoundation\StreamedResponse
+     * @return RedirectResponse|StreamedResponse
      */
-    public function show($id)
+    public function show(string $id): RedirectResponse|StreamedResponse
     {
+        // See if they're trying to download the ACARS client
+        if ($id === 'vmsacars' && Auth::check()) {
+            try {
+                Module::find('VMSAcars');
+                $downloadUrl = DB::table('vmsacars_config')
+                    ->where(['id' => 'download_url'])
+                    ->first();
+
+                if (!empty($downloadUrl) && !empty($downloadUrl->value)) {
+                    return redirect()->to($downloadUrl->value);
+                }
+            } catch (ModuleNotFoundException) {
+            }
+
+            return redirect()->back();
+        }
+
         /**
          * @var File $file
          */
         $file = File::find($id);
         if (!$file) {
             Flash::error('File doesn\'t exist');
+
             return redirect()->back();
         }
 
@@ -98,6 +134,7 @@ class DownloadController extends Controller
 
         if ($file->disk === 'public') {
             $storage = Storage::disk('public');
+
             return $storage->download($file->path, $file->filename);
         }
 

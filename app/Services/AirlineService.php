@@ -11,21 +11,12 @@ use App\Repositories\SubfleetRepository;
 
 class AirlineService extends Service
 {
-    private $airlineRepo;
-    private $flightRepo;
-    private $pirepRepo;
-    private $subfleetRepo;
-
     public function __construct(
-        AirlineRepository $airlineRepo,
-        FlightRepository $flightRepo,
-        PirepRepository $pirepRepo,
-        SubfleetRepository $subfleetRepo
+        private readonly AirlineRepository $airlineRepo,
+        private readonly FlightRepository $flightRepo,
+        private readonly PirepRepository $pirepRepo,
+        private readonly SubfleetRepository $subfleetRepo
     ) {
-        $this->airlineRepo = $airlineRepo;
-        $this->flightRepo = $flightRepo;
-        $this->pirepRepo = $pirepRepo;
-        $this->subfleetRepo = $subfleetRepo;
     }
 
     /**
@@ -33,12 +24,15 @@ class AirlineService extends Service
      *
      * @param array $attr
      *
+     * @throws \Prettus\Validator\Exceptions\ValidatorException
+     *
      * @return \App\Models\Airline
      */
     public function createAirline(array $attr): Airline
     {
+        /** @var Airline $airline */
         $airline = $this->airlineRepo->create($attr);
-        $airline->initJournal(setting('units.currency'));
+        $airline->refresh();
 
         return $airline;
     }

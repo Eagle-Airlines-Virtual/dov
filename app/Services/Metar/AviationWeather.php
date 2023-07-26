@@ -4,9 +4,10 @@ namespace App\Services\Metar;
 
 use App\Contracts\Metar;
 use App\Support\HttpClient;
-use function count;
 use Exception;
 use Illuminate\Support\Facades\Log;
+
+use function count;
 
 /**
  * Return the raw METAR/TAF string from the NOAA Aviation Weather Service
@@ -19,11 +20,12 @@ class AviationWeather extends Metar
     private const TAF_URL =
         'https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=tafs&requestType=retrieve&format=xml&hoursBeforeNow=3&mostRecent=true&stationString=';
 
-    private $httpClient;
-
-    public function __construct(HttpClient $httpClient)
-    {
-        $this->httpClient = $httpClient;
+    /**
+     * @param HttpClient $httpClient
+     */
+    public function __construct(
+        private readonly HttpClient $httpClient
+    ) {
     }
 
     /**

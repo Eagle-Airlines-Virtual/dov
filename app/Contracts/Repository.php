@@ -4,9 +4,10 @@ namespace App\Contracts;
 
 use Exception;
 use Illuminate\Validation\Validator;
-use function is_array;
 use Prettus\Repository\Eloquent\BaseRepository;
 use Prettus\Repository\Exceptions\RepositoryException;
+
+use function is_array;
 
 /**
  * @mixin BaseRepository
@@ -133,7 +134,10 @@ abstract class Repository extends BaseRepository
         $page = (int) request()->query('page', 1);
 
         $results = $this->model->{$method}($limit, $columns, 'page', $page);
-        $results->appends(app('request')->query());
+
+        $qs = request()->except(['page', 'user']);
+        $results->appends($qs);
+
         $this->resetModel();
 
         return $this->parserResult($results);

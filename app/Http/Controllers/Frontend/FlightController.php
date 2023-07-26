@@ -14,23 +14,18 @@ use App\Repositories\SubfleetRepository;
 use App\Repositories\UserRepository;
 use App\Services\GeoService;
 use App\Services\ModuleService;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 use Laracasts\Flash\Flash;
 use Prettus\Repository\Criteria\RequestCriteria;
 use Prettus\Repository\Exceptions\RepositoryException;
 
 class FlightController extends Controller
 {
-    private $airlineRepo;
-    private $airportRepo;
-    private $flightRepo;
-    private $moduleSvc;
-    private $subfleetRepo;
-    private $geoSvc;
-    private $userRepo;
-
     /**
      * @param AirlineRepository  $airlineRepo
      * @param AirportRepository  $airportRepo
@@ -39,23 +34,18 @@ class FlightController extends Controller
      * @param ModuleService      $moduleSvc
      * @param SubfleetRepository $subfleetRepo
      * @param UserRepository     $userRepo
+     * @param UserService        $userSvc
      */
     public function __construct(
-        AirlineRepository $airlineRepo,
-        AirportRepository $airportRepo,
-        FlightRepository $flightRepo,
-        GeoService $geoSvc,
-        ModuleService $moduleSvc,
-        SubfleetRepository $subfleetRepo,
-        UserRepository $userRepo
+        private readonly AirlineRepository $airlineRepo,
+        private readonly AirportRepository $airportRepo,
+        private readonly FlightRepository $flightRepo,
+        private readonly GeoService $geoSvc,
+        private readonly ModuleService $moduleSvc,
+        private readonly SubfleetRepository $subfleetRepo,
+        private readonly UserRepository $userRepo,
+        private readonly UserService $userSvc
     ) {
-        $this->airlineRepo = $airlineRepo;
-        $this->airportRepo = $airportRepo;
-        $this->flightRepo = $flightRepo;
-        $this->geoSvc = $geoSvc;
-        $this->moduleSvc = $moduleSvc;
-        $this->subfleetRepo = $subfleetRepo;
-        $this->userRepo = $userRepo;
     }
 
     /**
@@ -63,9 +53,9 @@ class FlightController extends Controller
      *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
      *
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return View
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         return $this->search($request);
     }
@@ -77,9 +67,9 @@ class FlightController extends Controller
      *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
      *
-     * @return mixed
+     * @return View
      */
-    public function search(Request $request)
+    public function search(Request $request): View
     {
         $where = [
             'active'  => true,
@@ -112,6 +102,23 @@ class FlightController extends Controller
             Log::emergency($e);
         }
 
+        // Filter flights according to user capabilities (by rank or by type rating etc)
+        $filter_by_user = (setting('pireps.restrict_aircraft_to_rank', true) || setting('pireps.restrict_aircraft_to_typerating', false)) ? true : false;
+
+        if ($filter_by_user) {
+            // Get allowed subfleets for the user
+            $user_subfleets = $this->userSvc->getAllowableSubfleets($user)->pluck('id')->toArray();
+            // Get flight_id's from relationships (group by flight id to reduce the array size)
+            $allowed_flights = DB::table('flight_subfleet')
+            ->select('flight_id')
+            ->whereIn('subfleet_id', $user_subfleets)
+                ->groupBy('flight_id')
+                ->pluck('flight_id')
+                ->toArray();
+        } else {
+            $allowed_flights = [];
+        }
+
         // Get only used Flight Types for the search form
         // And filter according to settings
         $usedtypes = Flight::select('flight_type')
@@ -135,7 +142,11 @@ class FlightController extends Controller
                 'subfleets.airline',
                 'simbrief' => function ($query) use ($user) {
                     $query->where('user_id', $user->id);
-                }, ])
+                },
+            ])
+            ->when($filter_by_user, function ($query) use ($allowed_flights) {
+                return $query->whereIn('id', $allowed_flights);
+            })
             ->orderBy('flight_number')
             ->orderBy('route_leg')
             ->paginate();
@@ -175,9 +186,9 @@ class FlightController extends Controller
      *
      * @param Request $request
      *
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return View
      */
-    public function bids(Request $request)
+    public function bids(Request $request): View
     {
         $user = $this->userRepo
             ->with(['bids', 'bids.flight'])
@@ -212,11 +223,11 @@ class FlightController extends Controller
     /**
      * Show the flight information page
      *
-     * @param $id
+     * @param string $id
      *
      * @return mixed
      */
-    public function show($id)
+    public function show(string $id): View
     {
         $user_id = Auth::id();
         $with_flight = [

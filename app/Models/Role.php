@@ -2,7 +2,8 @@
 
 namespace App\Models;
 
-use Laratrust\Models\LaratrustRole;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Laratrust\Models\Role as LaratrustRole;
 
 /**
  * @property int id
@@ -15,6 +16,8 @@ use Laratrust\Models\LaratrustRole;
  */
 class Role extends LaratrustRole
 {
+    use HasFactory;
+
     protected $fillable = [
         'id',
         'name',

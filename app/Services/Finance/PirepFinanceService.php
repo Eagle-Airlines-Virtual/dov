@@ -16,6 +16,7 @@ use App\Models\Enums\PirepStatus;
 use App\Models\Expense;
 use App\Models\Fare;
 use App\Models\Pirep;
+use App\Models\PirepFare;
 use App\Models\Subfleet;
 use App\Repositories\ExpenseRepository;
 use App\Repositories\JournalRepository;
@@ -27,11 +28,6 @@ use Illuminate\Support\Facades\Log;
 
 class PirepFinanceService extends Service
 {
-    private $expenseRepo;
-    private $fareSvc;
-    private $financeSvc;
-    private $journalRepo;
-
     /**
      * FinanceService constructor.
      *
@@ -41,15 +37,11 @@ class PirepFinanceService extends Service
      * @param FinanceService    $financeSvc
      */
     public function __construct(
-        ExpenseRepository $expenseRepo,
-        FareService $fareSvc,
-        FinanceService $financeSvc,
-        JournalRepository $journalRepo
+        private readonly ExpenseRepository $expenseRepo,
+        private readonly FareService $fareSvc,
+        private readonly FinanceService $financeSvc,
+        private readonly JournalRepository $journalRepo
     ) {
-        $this->expenseRepo = $expenseRepo;
-        $this->fareSvc = $fareSvc;
-        $this->journalRepo = $journalRepo;
-        $this->financeSvc = $financeSvc;
     }
 
     /**
@@ -121,9 +113,9 @@ class PirepFinanceService extends Service
      */
     public function payFaresForPirep($pirep): void
     {
-        $fares = $this->getReconciledFaresForPirep($pirep);
+        $fares = $this->getFaresForPirep($pirep);
 
-        /** @var \App\Models\Fare $fare */
+        /** @var PirepFare $fare */
         foreach ($fares as $fare) {
             Log::info('Finance: PIREP: '.$pirep->id.', Fare:', $fare->toArray());
 
@@ -240,18 +232,18 @@ class PirepFinanceService extends Service
             if ($prev_flight) {
                 // If there is a pirep use its values to calculate the remaining fuel
                 // and calculate the uplifted fuel amount for this pirep
-                $fuel_amount = $pirep->block_fuel - ($prev_flight->block_fuel - $prev_flight->fuel_used);
+                $fuel_amount = $pirep->block_fuel->internal() - ($prev_flight->block_fuel->internal() - $prev_flight->fuel_used->internal());
                 // Aircraft has more than enough fuel in its tanks, no uplift necessary
                 if ($fuel_amount < 0) {
                     $fuel_amount = 0;
                 }
             } else {
                 // No pirep found for aircraft, debit full block fuel
-                $fuel_amount = $pirep->block_fuel;
+                $fuel_amount = $pirep->block_fuel->internal();
             }
         } else {
             // Setting is false, switch back to basic calculation
-            $fuel_amount = $pirep->fuel_used;
+            $fuel_amount = $pirep->fuel_used->internal();
         }
 
         $debit = Money::createFromAmount($fuel_amount * $fuel_cost);
@@ -357,14 +349,14 @@ class PirepFinanceService extends Service
 
             // Form the memo, with some specific ones depending on the group
             if ($expense->ref_model === Subfleet::class) {
-                if ((int) ($expense->ref_model_id) === $pirep->aircraft->subfleet->id) {
+                if ((int) $expense->ref_model_id === $pirep->aircraft->subfleet->id) {
                     $memo = "Subfleet Expense: $expense->name ({$pirep->aircraft->subfleet->name}) dd";
                     $transaction_group = "Subfleet: $expense->name ({$pirep->aircraft->subfleet->name})";
                 } else { // Skip any subfleets that weren't used for this flight
                     return;
                 }
             } elseif ($expense->ref_model === Aircraft::class) {
-                if ((int) ($expense->ref_model_id) === $pirep->aircraft->id) {
+                if ((int) $expense->ref_model_id === $pirep->aircraft->id) {
                     $memo = "Aircraft Expense: $expense->name ({$pirep->aircraft->name})";
                     $transaction_group = "Aircraft: $expense->name "
                         ."({$pirep->aircraft->name}-{$pirep->aircraft->registration})";
@@ -575,51 +567,16 @@ class PirepFinanceService extends Service
     }
 
     /**
-     * Return all of the fares for the PIREP. Reconcile the list;
-     * Get the fares that have been filled out for the PIREP, and
-     * then get the fares for the flight and subfleet. Then merge
-     * them together, and return the final list of:
-     *      count       = number of pax
-     *      price       = how much each pax unit paid
-     *      capacity    = max number of pax units
-     *
-     * If count > capacity, count will be adjusted to capacity
+     * Return all of the fares for the PIREP
      *
      * @param $pirep
      *
      * @return \Illuminate\Support\Collection
      */
-    public function getReconciledFaresForPirep($pirep)
+    public function getFaresForPirep($pirep)
     {
         // Collect all of the fares and prices
-        $flight_fares = $this->fareSvc->getForPirep($pirep);
-        Log::info('Finance: PIREP: '.$pirep->id.', flight fares: ', $flight_fares->toArray());
-
-        $all_fares = $this->fareSvc->getAllFares($pirep->flight, $pirep->aircraft->subfleet);
-
-        $fares = $all_fares->map(function ($fare, $i) use ($flight_fares, $pirep) {
-            $fare_count = $flight_fares
-                ->where('fare_id', $fare->id)
-                ->first();
-
-            if ($fare_count) {
-                Log::info('Finance: PIREP: '.$pirep->id.', fare count: '.$fare_count);
-
-                // If the count is greater than capacity, then just set it
-                // to the maximum amount
-                if ($fare_count->count > $fare->capacity) {
-                    $fare->count = $fare->capacity;
-                } else {
-                    $fare->count = $fare_count->count;
-                }
-            } else {
-                Log::info('Finance: PIREP: '.$pirep->id.', no fare count found', $fare->toArray());
-            }
-
-            return $fare;
-        });
-
-        return $fares;
+        return $this->fareSvc->getForPirep($pirep);
     }
 
     /**

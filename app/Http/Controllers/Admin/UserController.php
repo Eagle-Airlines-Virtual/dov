@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Contracts\Controller;
+use App\Events\UserStatsChanged;
 use App\Http\Requests\CreateUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\Rank;
@@ -17,24 +18,18 @@ use App\Repositories\UserRepository;
 use App\Services\UserService;
 use App\Support\Timezonelist;
 use App\Support\Utils;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 use Laracasts\Flash\Flash;
 use League\ISO3166\ISO3166;
 use Prettus\Repository\Exceptions\RepositoryException;
 
 class UserController extends Controller
 {
-    private $airlineRepo;
-    private $airportRepo;
-    private $pirepRepo;
-    private $roleRepo;
-    private $typeratingRepo;
-    private $userRepo;
-    private $userSvc;
-
     /**
      * UserController constructor.
      *
@@ -47,29 +42,22 @@ class UserController extends Controller
      * @param UserService          $userSvc
      */
     public function __construct(
-        AirlineRepository $airlineRepo,
-        AirportRepository $airportRepo,
-        PirepRepository $pirepRepo,
-        RoleRepository $roleRepo,
-        TypeRatingRepository $typeratingRepo,
-        UserRepository $userRepo,
-        UserService $userSvc
+        private readonly AirlineRepository $airlineRepo,
+        private readonly AirportRepository $airportRepo,
+        private readonly PirepRepository $pirepRepo,
+        private readonly RoleRepository $roleRepo,
+        private readonly TypeRatingRepository $typeratingRepo,
+        private readonly UserRepository $userRepo,
+        private readonly UserService $userSvc
     ) {
-        $this->airlineRepo = $airlineRepo;
-        $this->airportRepo = $airportRepo;
-        $this->pirepRepo = $pirepRepo;
-        $this->roleRepo = $roleRepo;
-        $this->typeratingRepo = $typeratingRepo;
-        $this->userSvc = $userSvc;
-        $this->userRepo = $userRepo;
     }
 
     /**
      * @param Request $request
      *
-     * @return mixed
+     * @return View
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         try {
             $users = $this->userRepo->searchCriteria($request, false)
@@ -87,16 +75,14 @@ class UserController extends Controller
     /**
      * Show the form for creating a new User.
      *
-     * @return mixed
+     * @return View
      */
-    public function create()
+    public function create(): View
     {
         $airlines = $this->airlineRepo->selectBoxList();
         $airports = $this->airportRepo->selectBoxList(false);
         $countries = collect((new ISO3166())->all())
-            ->mapWithKeys(function ($item, $key) {
-                return [strtolower($item['alpha2']) => $item['name']];
-            });
+            ->mapWithKeys(fn ($item, $key) => [strtolower($item['alpha2']) => $item['name']]);
         $roles = $this->roleRepo->selectBoxList(false, true);
 
         return view('admin.users.create', [
@@ -119,9 +105,9 @@ class UserController extends Controller
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
      *
-     * @return mixed
+     * @return RedirectResponse
      */
-    public function store(CreateUserRequest $request)
+    public function store(CreateUserRequest $request): RedirectResponse
     {
         $input = $request->all();
         $user = $this->userRepo->create($input);
@@ -135,9 +121,11 @@ class UserController extends Controller
      *
      * @param int $id
      *
-     * @return mixed
+     * @throws RepositoryException
+     *
+     * @return View
      */
-    public function show($id)
+    public function show(int $id): View
     {
         return $this->edit($id);
     }
@@ -151,7 +139,7 @@ class UserController extends Controller
      *
      * @return mixed
      */
-    public function edit($id)
+    public function edit(int $id): View
     {
         $user = $this->userRepo
             ->with(['awards', 'fields', 'rank', 'typeratings'])
@@ -167,9 +155,7 @@ class UserController extends Controller
             ->paginate();
 
         $countries = collect((new ISO3166())->all())
-            ->mapWithKeys(function ($item, $key) {
-                return [strtolower($item['alpha2']) => $item['name']];
-            });
+            ->mapWithKeys(fn ($item, $key) => [strtolower($item['alpha2']) => $item['name']]);
 
         $airlines = $this->airlineRepo->selectBoxList();
         $airports = $this->airportRepo->selectBoxList(false);
@@ -198,9 +184,9 @@ class UserController extends Controller
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
      *
-     * @return mixed
+     * @return RedirectResponse
      */
-    public function update($id, UpdateUserRequest $request)
+    public function update(int $id, UpdateUserRequest $request): RedirectResponse
     {
         $user = $this->userRepo->findWithoutFail($id);
 
@@ -236,17 +222,23 @@ class UserController extends Controller
         // Convert transferred hours to minutes
         $req_data['transfer_time'] *= 60;
 
+        $original_user_rank = $user->rank_id;
+
         $user = $this->userRepo->update($req_data, $id);
 
         if ($original_user_state !== $user->state) {
             $this->userSvc->changeUserState($user, $original_user_state);
         }
 
+        if ($original_user_rank != $user->rank_id) {
+            event(new UserStatsChanged($user, 'rank', $user->rank_id));
+        }
+
         // Delete all of the roles and then re-attach the valid ones
         if (!empty($request->input('roles'))) {
             DB::table('role_user')->where('user_id', $id)->delete();
             foreach ($request->input('roles') as $key => $value) {
-                $user->attachRole($value);
+                $user->addRole($value);
             }
         }
 
@@ -260,9 +252,11 @@ class UserController extends Controller
      *
      * @param int $id
      *
-     * @return mixed
+     * @throws \Exception
+     *
+     * @return RedirectResponse
      */
-    public function destroy($id)
+    public function destroy(int $id): RedirectResponse
     {
         $user = $this->userRepo->findWithoutFail($id);
         if (empty($user)) {
@@ -281,12 +275,12 @@ class UserController extends Controller
      * Remove the award from a user
      *
      * @param \Illuminate\Http\Request $request
-     * @param mixed                    $id
-     * @param mixed                    $award_id
+     * @param int                      $id
+     * @param int                      $award_id
      *
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
-    public function destroy_user_award($id, $award_id, Request $request)
+    public function destroy_user_award(int $id, int $award_id, Request $request): RedirectResponse
     {
         $userAward = UserAward::where(['user_id' => $id, 'award_id' => $award_id]);
         if (empty($userAward)) {
@@ -303,12 +297,12 @@ class UserController extends Controller
     /**
      * Regenerate the user's API key
      *
-     * @param         $id
+     * @param int     $id
      * @param Request $request
      *
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     * @return RedirectResponse
      */
-    public function regen_apikey($id, Request $request)
+    public function regen_apikey(int $id, Request $request): RedirectResponse
     {
         $user = User::find($id);
         Log::info('Regenerating API key "'.$user->ident.'"');
@@ -324,11 +318,11 @@ class UserController extends Controller
     /**
      * Get the type ratings that are available to the user
      *
-     * @param $user
+     * @param User $user
      *
      * @return array
      */
-    protected function getAvailTypeRatings($user)
+    protected function getAvailTypeRatings(User $user): array
     {
         $retval = [];
         $all_ratings = $this->typeratingRepo->all();
@@ -343,9 +337,9 @@ class UserController extends Controller
     /**
      * @param User $user
      *
-     * @return mixed
+     * @return View
      */
-    protected function return_typeratings_view(?User $user)
+    protected function return_typeratings_view(?User $user): View
     {
         $user->refresh();
 
@@ -359,12 +353,12 @@ class UserController extends Controller
     /**
      * Operations for associating type ratings to the user
      *
-     * @param         $id
+     * @param int     $id
      * @param Request $request
      *
-     * @return mixed
+     * @return View
      */
-    public function typeratings($id, Request $request)
+    public function typeratings(int $id, Request $request): View
     {
         $user = $this->userRepo->findWithoutFail($id);
         if (empty($user)) {

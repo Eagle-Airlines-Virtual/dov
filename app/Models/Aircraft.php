@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Contracts\Model;
+use App\Models\Casts\FuelCast;
 use App\Models\Enums\AircraftStatus;
 use App\Models\Traits\ExpensableTrait;
 use App\Models\Traits\FilesTrait;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Znck\Eloquent\Traits\BelongsToThrough;
 
 /**
@@ -18,6 +21,7 @@ use Znck\Eloquent\Traits\BelongsToThrough;
  * @property string   name
  * @property string   icao
  * @property string   registration
+ * @property string   fin
  * @property int      flight_time
  * @property float    mtow
  * @property float    zfw
@@ -32,9 +36,10 @@ use Znck\Eloquent\Traits\BelongsToThrough;
  */
 class Aircraft extends Model
 {
+    use BelongsToThrough;
     use ExpensableTrait;
     use FilesTrait;
-    use BelongsToThrough;
+    use HasFactory;
 
     public $table = 'aircraft';
 
@@ -46,10 +51,12 @@ class Aircraft extends Model
         'icao',
         'name',
         'registration',
+        'fin',
         'hex_code',
         'flight_time',
         'mtow',
         'zfw',
+        'fuel_onboard',
         'status',
         'state',
     ];
@@ -58,63 +65,73 @@ class Aircraft extends Model
      * The attributes that should be casted to native types.
      */
     protected $casts = [
-        'subfleet_id' => 'integer',
-        'mtow'        => 'float',
-        'zfw'         => 'float',
-        'flight_time' => 'float',
-        'state'       => 'integer',
+        'flight_time'  => 'float',
+        'fuel_onboard' => FuelCast::class,
+        'mtow'         => 'float',
+        'state'        => 'integer',
+        'subfleet_id'  => 'integer',
+        'zfw'          => 'float',
     ];
 
     /**
      * Validation rules
      */
     public static $rules = [
-        'subfleet_id'  => 'required',
-        'name'         => 'required',
-        'status'       => 'required',
-        'registration' => 'required',
+        'fin'          => 'nullable',
         'mtow'         => 'nullable|numeric',
+        'name'         => 'required',
+        'registration' => 'required',
+        'status'       => 'required',
+        'subfleet_id'  => 'required',
         'zfw'          => 'nullable|numeric',
     ];
 
     /**
-     * @return string
+     * @return Attribute
      */
-    public function getIdentAttribute(): string
+    public function active(): Attribute
     {
-        return $this->registration.' ('.$this->icao.')';
+        return Attribute::make(
+            get: fn ($_, $attr) => $attr['status'] === AircraftStatus::ACTIVE
+        );
     }
 
     /**
-     * See if this aircraft is active
-     *
-     * @return bool
+     * @return Attribute
      */
-    public function getActiveAttribute(): bool
+    public function icao(): Attribute
     {
-        return $this->status === AircraftStatus::ACTIVE;
+        return Attribute::make(
+            set: fn ($value) => strtoupper($value)
+        );
     }
 
     /**
-     * Capitalize the ICAO when set
-     *
-     * @param $icao
+     * @return Attribute
      */
-    public function setIcaoAttribute($icao): void
+    public function ident(): Attribute
     {
-        $this->attributes['icao'] = strtoupper($icao);
+        return Attribute::make(
+            get: fn ($_, $attrs) => $attrs['registration'].' ('.$attrs['icao'].')'
+        );
     }
 
     /**
-     * Return the landing time in carbon format if provided
+     * Return the landing time
      *
-     * @return Carbon|null
+     * @return Attribute
      */
-    public function getLandingTimeAttribute()
+    public function landingTime(): Attribute
     {
-        if (array_key_exists('landing_time', $this->attributes) && filled($this->attributes['landing_time'])) {
-            return new Carbon($this->attributes['landing_time']);
-        }
+        return Attribute::make(
+            get: function ($_, $attrs) {
+                if (array_key_exists('landing_time', $attrs) && filled($attrs['landing_time'])) {
+                    return new Carbon($attrs['landing_time']);
+                }
+
+                return $attrs['landing_time'];
+            }
+        );
     }
 
     /**

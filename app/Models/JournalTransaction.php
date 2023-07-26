@@ -8,6 +8,7 @@ namespace App\Models;
 
 use App\Contracts\Model;
 use App\Models\Traits\ReferenceTrait;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 /**
  * @property string  id  UUID type
@@ -23,6 +24,7 @@ use App\Models\Traits\ReferenceTrait;
  */
 class JournalTransaction extends Model
 {
+    use HasFactory;
     use ReferenceTrait;
 
     protected $table = 'journal_transactions';
@@ -47,13 +49,6 @@ class JournalTransaction extends Model
         'debit'     => 'integer',
         'post_date' => 'datetime',
         'tags'      => 'array',
-    ];
-
-    //protected $dateFormat = 'Y-m-d';
-    protected $dates = [
-        'created_at',
-        'updated_at',
-        'post_date',
     ];
 
     /**

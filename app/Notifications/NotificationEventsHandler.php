@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Contracts\Listener;
+use App\Events\AwardAwarded;
 use App\Events\NewsAdded;
 use App\Events\PirepAccepted;
 use App\Events\PirepFiled;
@@ -11,6 +12,7 @@ use App\Events\PirepRejected;
 use App\Events\PirepStatusChange;
 use App\Events\UserRegistered;
 use App\Events\UserStateChanged;
+use App\Models\Enums\PirepStatus;
 use App\Models\Enums\UserState;
 use App\Models\User;
 use App\Notifications\Messages\UserRejected;
@@ -28,6 +30,7 @@ class NotificationEventsHandler extends Listener
     private static $broadcastNotifyable;
 
     public static $callbacks = [
+        AwardAwarded::class      => 'onAwardAwarded',
         NewsAdded::class         => 'onNewsAdded',
         PirepPrefiled::class     => 'onPirepPrefile',
         PirepStatusChange::class => 'onPirepStatusChange',
@@ -36,6 +39,7 @@ class NotificationEventsHandler extends Listener
         PirepRejected::class     => 'onPirepRejected',
         UserRegistered::class    => 'onUserRegister',
         UserStateChanged::class  => 'onUserStateChange',
+        UserStatsChanged::class  => 'onUserStatsChanged',
     ];
 
     public function __construct()
@@ -50,7 +54,7 @@ class NotificationEventsHandler extends Listener
      */
     protected function notifyAdmins(\App\Contracts\Notification $notification)
     {
-        $admin_users = User::whereRoleIs('admin')->get();
+        $admin_users = User::whereHasRole('admin')->get();
 
         foreach ($admin_users as $user) {
             if (empty($user->email)) {
@@ -97,7 +101,7 @@ class NotificationEventsHandler extends Listener
         }
 
         /** @var Collection $users */
-        $users = User::where($where)->where('state', '<>', UserState::DELETED)->get();
+        $users = User::where($where)->whereIn('state', [UserState::ACTIVE, UserState::ON_LEAVE])->get();
         if (empty($users) || $users->count() === 0) {
             return;
         }
@@ -134,10 +138,10 @@ class NotificationEventsHandler extends Listener
          */
         $this->notifyAdmins(new Messages\AdminUserRegistered($event->user));
 
-        /**
-         * Discord and other notifications
+        /*
+         * Broadcast notifications
          */
-        Notification::send([$event->user], new Messages\AdminUserRegistered($event->user));
+        Notification::send([$event->user], new Messages\Broadcast\UserRegistered($event->user));
     }
 
     /**
@@ -161,21 +165,42 @@ class NotificationEventsHandler extends Listener
     }
 
     /**
-     * Prefile notification
+     * Prefile notification. Disabled intentionally, No need to send it to Discord
      */
     public function onPirepPrefile(PirepPrefiled $event): void
     {
         Log::info('NotificationEvents::onPirepPrefile: '.$event->pirep->id.' prefiled');
-        Notification::send([$event->pirep], new Messages\PirepPrefiled($event->pirep));
+
+        /*
+         * Broadcast notifications
+         */
+        // Notification::send([$event->pirep], new Messages\Broadcast\PirepPrefiled($event->pirep));
     }
 
     /**
-     * Status Change notification
+     * Status Change notification.
+     * Reduced the messages (Boarding, Pushback, TakeOff, Landing and non-normals only)
+     * If needed array can be tied to a setting at admin side for further customization
      */
     public function onPirepStatusChange(PirepStatusChange $event): void
     {
-        Log::info('NotificationEvents::onPirepStatusChange: '.$event->pirep->id.' prefiled');
-        Notification::send([$event->pirep], new Messages\PirepStatusChanged($event->pirep));
+        Log::info('NotificationEvents::onPirepStatusChange: '.$event->pirep->id.' status changed');
+
+        $message_types = [
+            PirepStatus::BOARDING,
+            PirepStatus::PUSHBACK_TOW,
+            PirepStatus::GRND_RTRN,
+            PirepStatus::TAKEOFF,
+            PirepStatus::LANDED,
+            PirepStatus::DIVERTED,
+            PirepStatus::CANCELLED,
+            PirepStatus::PAUSED,
+            PirepStatus::EMERG_DESCENT,
+        ];
+
+        if (setting('notifications.discord_pirep_status', true) && in_array($event->pirep->status, $message_types, true)) {
+            Notification::send([$event->pirep], new Messages\Broadcast\PirepStatusChanged($event->pirep));
+        }
     }
 
     /**
@@ -186,8 +211,14 @@ class NotificationEventsHandler extends Listener
     public function onPirepFile(PirepFiled $event): void
     {
         Log::info('NotificationEvents::onPirepFile: '.$event->pirep->id.' filed');
-        $this->notifyAdmins(new Messages\PirepSubmitted($event->pirep));
-        Notification::send([$event->pirep], new Messages\PirepSubmitted($event->pirep));
+        if (setting('notifications.mail_pirep_admin', true)) {
+            $this->notifyAdmins(new Messages\PirepFiled($event->pirep));
+        }
+
+        /*
+         * Broadcast notifications
+         */
+        Notification::send([$event->pirep], new Messages\Broadcast\PirepFiled($event->pirep));
     }
 
     /**
@@ -197,19 +228,23 @@ class NotificationEventsHandler extends Listener
      */
     public function onPirepAccepted(PirepAccepted $event): void
     {
-        Log::info('NotificationEvents::onPirepAccepted: '.$event->pirep->id.' accepted');
-        $this->notifyUser($event->pirep->user, new Messages\PirepAccepted($event->pirep));
+        if (setting('notifications.mail_pirep_user_ack', true)) {
+            Log::info('NotificationEvents::onPirepAccepted: '.$event->pirep->id.' accepted');
+            $this->notifyUser($event->pirep->user, new Messages\PirepAccepted($event->pirep));
+        }
     }
 
     /**
-     * Notify the user that their PIREP has been accepted
+     * Notify the user that their PIREP has been rejected
      *
      * @param \App\Events\PirepRejected $event
      */
     public function onPirepRejected(PirepRejected $event): void
     {
-        Log::info('NotificationEvents::onPirepRejected: '.$event->pirep->id.' rejected');
-        $this->notifyUser($event->pirep->user, new Messages\PirepRejected($event->pirep));
+        if (setting('notifications.mail_pirep_user_rej', true)) {
+            Log::info('NotificationEvents::onPirepRejected: '.$event->pirep->id.' rejected');
+            $this->notifyUser($event->pirep->user, new Messages\PirepRejected($event->pirep));
+        }
     }
 
     /**
@@ -220,7 +255,43 @@ class NotificationEventsHandler extends Listener
     public function onNewsAdded(NewsAdded $event): void
     {
         Log::info('NotificationEvents::onNewsAdded');
-        $this->notifyAllUsers(new Messages\NewsAdded($event->news));
-        Notification::send([$event->news], new Messages\NewsAdded($event->news));
+        if (setting('notifications.mail_news', true)) {
+            $this->notifyAllUsers(new Messages\NewsAdded($event->news));
+        }
+
+        /*
+         * Broadcast notifications
+         */
+        Notification::send([$event->news], new Messages\Broadcast\NewsAdded($event->news));
+    }
+
+    /**
+     * Notify all users that user has awarded a new award
+     *
+     * @param \App\Events\AwardAwarded $event
+     */
+    public function onAwardAwarded(AwardAwarded $event): void
+    {
+        /*
+         * Broadcast notifications
+         */
+        if (setting('notifications.discord_award_awarded', true)) {
+            Notification::send([$event->userAward], new Messages\Broadcast\AwardAwarded($event->userAward));
+        }
+    }
+
+    /**
+     * Notify all users of a user rank change
+     *
+     * @param \App\Events\UserStatsChanged $event
+     */
+    public function onUserStatsChanged(UserStatsChanged $event): void
+    {
+        /*
+         * Broadcast notifications
+         */
+        if (setting('notifications.discord_user_rank_changed', true)) {
+            Notification::send([$event->user], new Messages\Broadcast\UserRankChanged($event->user));
+        }
     }
 }

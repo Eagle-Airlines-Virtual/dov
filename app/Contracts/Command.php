@@ -3,8 +3,9 @@
 namespace App\Contracts;
 
 use Illuminate\Support\Facades\Log;
-use function is_array;
 use Symfony\Component\Process\Process;
+
+use function is_array;
 
 /**
  * Class BaseCommand
@@ -27,6 +28,16 @@ abstract class Command extends \Illuminate\Console\Command
         /*if (app()->runningInConsole() && env('APP_ENV') !== 'testing') {
             $this->redirectLoggingToFile('stdout');
         }*/
+    }
+
+    /**
+     * Return the signature of the command
+     *
+     * @return string
+     */
+    public function getSignature(): string
+    {
+        return $this->signature;
     }
 
     /**

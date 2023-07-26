@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Contracts\Controller;
 use App\Events\AcarsUpdate;
 use App\Exceptions\PirepCancelled;
+use App\Exceptions\PirepNotFound;
 use App\Http\Requests\Acars\EventRequest;
 use App\Http\Requests\Acars\LogRequest;
 use App\Http\Requests\Acars\PositionRequest;
@@ -12,23 +13,18 @@ use App\Http\Resources\AcarsRoute as AcarsRouteResource;
 use App\Http\Resources\Pirep as PirepResource;
 use App\Models\Acars;
 use App\Models\Enums\AcarsType;
-use App\Models\Enums\PirepStatus;
 use App\Models\Pirep;
 use App\Repositories\AcarsRepository;
 use App\Repositories\PirepRepository;
 use App\Services\GeoService;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class AcarsController extends Controller
 {
-    private $acarsRepo;
-    private $geoSvc;
-    private $pirepRepo;
-
     /**
      * AcarsController constructor.
      *
@@ -37,23 +33,22 @@ class AcarsController extends Controller
      * @param PirepRepository $pirepRepo
      */
     public function __construct(
-        AcarsRepository $acarsRepo,
-        GeoService $geoSvc,
-        PirepRepository $pirepRepo
+        private readonly AcarsRepository $acarsRepo,
+        private readonly GeoService $geoSvc,
+        private readonly PirepRepository $pirepRepo
     ) {
-        $this->geoSvc = $geoSvc;
-        $this->acarsRepo = $acarsRepo;
-        $this->pirepRepo = $pirepRepo;
     }
 
     /**
      * Check if a PIREP is cancelled
      *
-     * @param $pirep
+     * @param Pirep $pirep
      *
      * @throws \App\Exceptions\PirepCancelled
+     *
+     * @return void
      */
-    protected function checkCancelled(Pirep $pirep)
+    protected function checkCancelled(Pirep $pirep): void
     {
         if ($pirep->cancelled) {
             throw new PirepCancelled($pirep);
@@ -67,9 +62,11 @@ class AcarsController extends Controller
      */
     public function live_flights()
     {
-        $pireps = $this->acarsRepo->getPositions(setting('acars.live_time'))->filter(function ($pirep) {
-            return $pirep->position !== null;
-        });
+        $pireps = $this->acarsRepo->getPositions(setting('acars.live_time'))->filter(
+            function ($pirep) {
+                return $pirep->position !== null;
+            }
+        );
 
         return PirepResource::collection($pireps);
     }
@@ -79,9 +76,9 @@ class AcarsController extends Controller
      *
      * @param Request $request
      *
-     * @return mixed
+     * @return JsonResponse
      */
-    public function pireps_geojson(Request $request)
+    public function pireps_geojson(Request $request): JsonResponse
     {
         $pireps = $this->acarsRepo->getPositions(setting('acars.live_time'));
         $positions = $this->geoSvc->getFeatureForLiveFlights($pireps);
@@ -94,14 +91,18 @@ class AcarsController extends Controller
     /**
      * Return the GeoJSON for the ACARS line
      *
-     * @param         $pirep_id
+     * @param string  $pirep_id
      * @param Request $request
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function acars_geojson($pirep_id, Request $request)
+    public function acars_geojson(string $pirep_id, Request $request): JsonResponse
     {
         $pirep = Pirep::find($pirep_id);
+        if (empty($pirep)) {
+            throw new PirepNotFound($pirep_id);
+        }
+
         $geodata = $this->geoSvc->getFeatureFromAcars($pirep);
 
         return response()->json([
@@ -112,14 +113,18 @@ class AcarsController extends Controller
     /**
      * Return the routes for the ACARS line
      *
-     * @param         $id
+     * @param string  $id
      * @param Request $request
      *
      * @return AcarsRouteResource
      */
-    public function acars_get($id, Request $request)
+    public function acars_get(string $id, Request $request): AcarsRouteResource
     {
-        $this->pirepRepo->find($id);
+        $pirep = $this->pirepRepo->find($id);
+        if (empty($pirep)) {
+            throw new PirepNotFound($id);
+        }
+
         $acars = Acars::with(['pirep'])
             ->where([
                 'pirep_id' => $id,
@@ -134,18 +139,22 @@ class AcarsController extends Controller
     /**
      * Post ACARS updates for a PIREP
      *
-     * @param                 $id
+     * @param string          $id
      * @param PositionRequest $request
      *
-     * @throws \App\Exceptions\PirepCancelled
      * @throws \Symfony\Component\HttpKernel\Exception\BadRequestHttpException
+     * @throws \App\Exceptions\PirepCancelled
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function acars_store($id, PositionRequest $request)
+    public function acars_store(string $id, PositionRequest $request): JsonResponse
     {
         // Check if the status is cancelled...
         $pirep = Pirep::find($id);
+        if (empty($pirep)) {
+            throw new PirepNotFound($id);
+        }
+
         $this->checkCancelled($pirep);
 
         /*Log::debug(
@@ -176,7 +185,7 @@ class AcarsController extends Controller
             }
 
             try {
-                if (isset($position['id'])) {
+                if (!empty($position['id'])) {
                     Acars::updateOrInsert(
                         ['id' => $position['id']],
                         $position
@@ -209,18 +218,22 @@ class AcarsController extends Controller
      * Post ACARS LOG update for a PIREP. These updates won't show up on the map
      * But rather in a log file.
      *
-     * @param            $id
+     * @param string     $id
      * @param LogRequest $request
      *
-     * @throws \App\Exceptions\PirepCancelled
      * @throws \Symfony\Component\HttpKernel\Exception\BadRequestHttpException
+     * @throws \App\Exceptions\PirepCancelled
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function acars_logs($id, LogRequest $request)
+    public function acars_logs(string $id, LogRequest $request): JsonResponse
     {
         // Check if the status is cancelled...
         $pirep = Pirep::find($id);
+        if (empty($pirep)) {
+            throw new PirepNotFound($id);
+        }
+
         $this->checkCancelled($pirep);
 
         // Log::debug('Posting ACARS log, PIREP: '.$id, $request->post());
@@ -263,18 +276,22 @@ class AcarsController extends Controller
      * Post ACARS LOG update for a PIREP. These updates won't show up on the map
      * But rather in a log file.
      *
-     * @param              $id
+     * @param string       $id
      * @param EventRequest $request
      *
-     * @throws \App\Exceptions\PirepCancelled
      * @throws \Symfony\Component\HttpKernel\Exception\BadRequestHttpException
+     * @throws \App\Exceptions\PirepCancelled
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
-    public function acars_events($id, EventRequest $request)
+    public function acars_events(string $id, EventRequest $request): JsonResponse
     {
         // Check if the status is cancelled...
         $pirep = Pirep::find($id);
+        if (empty($pirep)) {
+            throw new PirepNotFound($id);
+        }
+
         $this->checkCancelled($pirep);
 
         Log::debug('Posting ACARS event, PIREP: '.$id, $request->post());
