@@ -122,7 +122,7 @@
 
         <tr>
           <td>@lang('pireps.source')</td>
-          <td>{{ PirepSource::label($pirep->source) }}</td>
+          <td>{{ PirepSource::label($pirep->source_name) }}</td>
         </tr>
 
         <tr>
@@ -140,11 +140,7 @@
           <td>{{ $pirep->notes }}</td>
         </tr>
 
-        @if($pirep->score && $pirep->landing_rate)
-          <tr>
-            <td>Score</td>
-            <td>{{ $pirep->score }}</td>
-          </tr>
+        @if($pirep->landing_rate)
           <tr>
             <td>Landing Rate</td>
             <td>{{ number_format($pirep->landing_rate) }}</td>

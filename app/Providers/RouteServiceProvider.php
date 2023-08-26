@@ -134,7 +134,12 @@ class RouteServiceProvider extends ServiceProvider
                 Route::get('profile/acars', 'ProfileController@acars')->name('profile.acars');
                 Route::get('profile/regen_apikey', 'ProfileController@regen_apikey')->name('profile.regen_apikey');
 
+
                 Route::resource('profile', 'ProfileController');
+                
+                Route::get('statspilots', function() {
+                    return view('layouts.default.statspilots.index');
+                })->name('statspilots.index');
 
                 // SimBrief stuff
                 Route::get('simbrief/generate', 'SimBriefController@generate')->name('simbrief.generate');

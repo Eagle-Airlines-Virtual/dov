@@ -24,6 +24,15 @@
         </a>
       </li>
 
+      @if(Auth::check())
+      <li class="nav-item">
+        <a class="nav-link" href="{{ route('frontend.statspilots.index') }}">
+          <i class="fas fa-star"></i>
+          <p>Pilots Stats</p>
+        </a>
+      </li>
+      @endif
+
       {{-- Show the module links that don't require being logged in --}}
       @foreach($moduleSvc->getFrontendLinks($logged_in=false) as &$link)
         <li class="nav-item">

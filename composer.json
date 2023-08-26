@@ -1,7 +1,11 @@
 {
     "name": "phpvms/phpvms",
     "description": "phpVMS - Virtual Airline Administration",
-    "keywords": ["phpvms", "virtual", "airlines"],
+    "keywords": [
+        "phpvms",
+        "virtual",
+        "airlines"
+    ],
     "license": "BSD-3-Clause",
     "type": "project",
     "minimum-stability": "dev",
@@ -31,7 +35,7 @@
         "symfony/yaml": "~6.2",
         "psr/container": "1.1.1",
         "composer/composer": "~2.3.0",
-        "composer/installers": "~1.12.0",
+        "composer/installers": "~1.0",
         "laravel/framework": "~v10.0",
         "arrilot/laravel-widgets": "~3.13.0",
         "doctrine/dbal": "^3.0",
@@ -100,13 +104,17 @@
             "Tests\\": "tests/"
         }
     },
-     "extra": {
-         "installer-types": ["phpvms-module"],
-         "installer-paths": {
-             "modules/{$name}/": ["type:phpvms-module"]
-         },
-         "module-dir": "modules",
-         "symfony": {
+    "extra": {
+        "installer-types": [
+            "phpvms-module"
+        ],
+        "installer-paths": {
+            "modules/{$name}/": [
+                "type:phpvms-module"
+            ]
+        },
+        "module-dir": "modules",
+        "symfony": {
             "require": "^6.0"
         }
     },
