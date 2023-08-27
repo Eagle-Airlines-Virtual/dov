@@ -128,12 +128,12 @@ class FinanceService extends Service
      * grouped transactions (e.g, "Fares" and "Ground Handling", etc)
      *
      * @param Airline $airline
-     * @param string  $start_date YYYY-MM-DD
-     * @param string  $end_date   YYYY-MM-DD
+     * @param string $start_date YYYY-MM-DD
+     * @param string $end_date   YYYY-MM-DD
      *
      * @return array
      */
-    public function getAirlineTransactionsBetween($airline, $start_date, $end_date)
+    public function getAirlineTransactionsBetween(Airline $airline, string $start_date, string $end_date): array
     {
         // Return all the transactions, grouped by the transaction group
         $transactions = JournalTransaction::groupBy('transaction_group', 'currency')
@@ -141,7 +141,7 @@ class FinanceService extends Service
                          currency, 
                          SUM(credit) as sum_credits, 
                          SUM(debit) as sum_debits')
-            ->where(['journal_id' => $airline->journal->id])
+            ->where(['journal_id' => $airline->journal?->id])
             ->whereBetween('created_at', [$start_date, $end_date], 'AND')
             ->orderBy('sum_credits', 'desc')
             ->orderBy('sum_debits', 'desc')
