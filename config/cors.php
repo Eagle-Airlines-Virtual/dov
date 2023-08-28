@@ -1,6 +1,5 @@
 <?php
 
-
 return [
 
     /*
@@ -27,7 +26,9 @@ return [
         'OPTIONS'
     ],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => [
+        '*'
+    ],
 
     'allowed_origins_patterns' => [],
 
