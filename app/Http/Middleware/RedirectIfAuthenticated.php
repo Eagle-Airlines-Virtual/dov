@@ -12,7 +12,7 @@ class RedirectIfAuthenticated implements Middleware
     public function handle(Request $request, Closure $next, $guard = null)
     {
         if (Auth::guard($guard)->check()) {
-            return redirect('/');
+            return redirect('/dashboard');
         }
 
         return $next($request);

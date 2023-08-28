@@ -136,10 +136,10 @@ class RouteServiceProvider extends ServiceProvider
 
 
                 Route::resource('profile', 'ProfileController');
-                
-                Route::get('statspilots', function() {
-                    return view('layouts.default.statspilots.index');
-                })->name('statspilots.index');
+
+//                Route::get('statspilots', function() {
+//                    return view('layouts.default.statspilots.index');
+//                })->name('statspilots.index');
 
                 // SimBrief stuff
                 Route::get('simbrief/generate', 'SimBriefController@generate')->name('simbrief.generate');
@@ -157,19 +157,19 @@ class RouteServiceProvider extends ServiceProvider
                 'prefix'    => '',
                 'as'        => 'frontend.',
             ], function () {
-                Route::get('/', 'HomeController@index')->name('home');
-                Route::get('r/{id}', 'PirepController@show')->name('pirep.show.public');
-                Route::get('pireps/{id}', 'PirepController@show')->name('pireps.show');
+//                Route::get('/', 'HomeController@index')->name('home');
+//                Route::get('r/{id}', 'PirepController@show')->name('pirep.show.public');
+//                Route::get('pireps/{id}', 'PirepController@show')->name('pireps.show');
+//
+//                Route::get('users/{id}', 'ProfileController@show')->name('users.show.public');
+//                Route::get('pilots/{id}', 'ProfileController@show')->name('pilots.show.public');
+//
+//                Route::get('page/{slug}', 'PageController@show')->name('pages.show');
+//
+//                Route::get('profile/{id}', 'ProfileController@show')->name('profile.show.public');
 
-                Route::get('users/{id}', 'ProfileController@show')->name('users.show.public');
-                Route::get('pilots/{id}', 'ProfileController@show')->name('pilots.show.public');
-
-                Route::get('page/{slug}', 'PageController@show')->name('pages.show');
-
-                Route::get('profile/{id}', 'ProfileController@show')->name('profile.show.public');
-
-                Route::get('users', 'UserController@index')->name('users.index');
-                Route::get('pilots', 'UserController@index')->name('pilots.index');
+//                Route::get('users', 'UserController@index')->name('users.index');
+//                Route::get('pilots', 'UserController@index')->name('pilots.index');
 
                 Route::get('livemap', 'LiveMapController@index')->name('livemap.index');
 
