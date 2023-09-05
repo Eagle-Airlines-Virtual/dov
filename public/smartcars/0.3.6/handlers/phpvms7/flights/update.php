@@ -53,6 +53,31 @@ function phaseToStatus(string $phase): string {
     }
 }
 
+function phaseToState(string $phase): string {
+    switch(strtolower($phase)) {
+        case 'boarding':
+        case 'push_back':
+        case 'taxi':
+        case 'take_off':
+        case 'climb_out':
+        case 'climb':
+        case 'cruise':
+        case 'descent':
+        case 'approach':
+        case 'final':
+        case 'go_around':
+        case 'taxi_to_gate':
+        case 'deboarding':
+        case 'diverted':
+            return 0;
+        case 'landed':
+        case 'rejected_take_off':
+            return 1;
+    }
+}
+
+
+
 $pirepID = $database->fetch('SELECT ' . dbPrefix . 'pireps.id FROM ' . dbPrefix . 'bids INNER JOIN ' . dbPrefix . 'pireps ON ' . dbPrefix . 'bids.flight_id = ' . dbPrefix . 'pireps.flight_id WHERE ' . dbPrefix . 'bids.id=? AND ' . dbPrefix . 'bids.user_id=?', array($_POST['bidID'], $pilotID));
 if($pirepID === array())
 {
@@ -87,8 +112,8 @@ if($pirepID === array())
     $flightDetails = $flightDetails[0];
 
     $database->execute('INSERT INTO ' . dbPrefix . 'pireps
-    (id, user_id, airline_id, flight_id, flight_number, route_code, route_leg, flight_type, dpt_airport_id, arr_airport_id, alt_airport_id, level, planned_distance, planned_flight_time, route, source, source_name, status, aircraft_id, created_at, updated_at)
-    VALUES (:id, :user_id, :airline_id, :flight_id, :flight_number, :route_code, :route_leg, :flight_type, :dpt_airport_id, :arr_airport_id, :alt_airport_id, :level, :planned_distance, :planned_flight_time, :route, :source, :source_name, :status, :aircraft_id, NOW(), NOW())',
+    (id, user_id, airline_id, flight_id, flight_number, route_code, route_leg, flight_type, dpt_airport_id, arr_airport_id, alt_airport_id, level, planned_distance, planned_flight_time, route, source, source_name, state, status, aircraft_id, created_at, updated_at)
+    VALUES (:id, :user_id, :airline_id, :flight_id, :flight_number, :route_code, :route_leg, :flight_type, :dpt_airport_id, :arr_airport_id, :alt_airport_id, :level, :planned_distance, :planned_flight_time, :route, :source, :source_name, :state, :status, :aircraft_id, NOW(), NOW())',
     array(
         'id' => $pirepID,
         'user_id' => $pilotID,
@@ -107,6 +132,7 @@ if($pirepID === array())
         'route' => implode(' ', $_POST['route']),
         'source' => 1,
         'source_name' => 'smartCARS 3',
+        'state' => phaseToState($_POST['phase']),
         'status' => phaseToStatus($_POST['phase']),
         'aircraft_id' => $_POST['aircraft']
     ));
@@ -114,7 +140,7 @@ if($pirepID === array())
 else {
     $pirepID = $pirepID[0]['id'];
 }
-$database->execute('UPDATE ' . dbPrefix . 'pireps SET state=0, status=?, updated_at=NOW() WHERE id=?', array(phaseToStatus($_POST['phase']), $pirepID));
+$database->execute('UPDATE ' . dbPrefix . 'pireps SET state=?, status=?, updated_at=NOW() WHERE id=?', array(phaseToState($_POST['phase']), phaseToStatus($_POST['phase']), $pirepID));
 
 $database->execute('INSERT INTO ' . dbPrefix . 'acars
 (id, pirep_id, type, status, lat, lon, distance, heading, altitude, gs, created_at, updated_at)
