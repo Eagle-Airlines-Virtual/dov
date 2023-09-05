@@ -65,7 +65,8 @@ class AcarsRepository extends Repository
             'user',
         ];
 
-        $q = Pirep::with($with);
+        $q = Pirep::with($with)
+            ->where(['state' => PirepState::IN_PROGRESS]);
 
         if ($live_time !== null && $live_time > 0) {
             $st = Carbon::now()->subHours($live_time);
@@ -81,6 +82,8 @@ class AcarsRepository extends Repository
      */
     public function getAllAcarsPoints()
     {
-        return Pirep::with('acars');
+        return Pirep::with('acars')->where([
+            'state' => PirepState::IN_PROGRESS,
+        ]);
     }
 }
