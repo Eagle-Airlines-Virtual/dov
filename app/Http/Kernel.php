@@ -5,7 +5,6 @@ namespace App\Http;
 use App\Http\Middleware\ApiAuth;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\InstalledCheck;
-use App\Http\Middleware\JsonResponse;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\SetActiveLanguage;
 use App\Http\Middleware\SetActiveTheme;
@@ -30,13 +29,13 @@ class Kernel extends HttpKernel
         CheckForMaintenanceMode::class,
         TrimStrings::class,
         ConvertEmptyStringsToNull::class,
+        \Fruitcake\Cors\HandleCors::class,
     ];
 
     protected $middlewareGroups = [
         'api' => [
             // 'throttle:60,1',
-            'bindings',
-            'json',
+            'bindings'
         ],
         'web' => [
             InstalledCheck::class,
@@ -57,7 +56,6 @@ class Kernel extends HttpKernel
         'bindings'       => SubstituteBindings::class,
         'can'            => Authorize::class,
         'guest'          => RedirectIfAuthenticated::class,
-        'json'           => JsonResponse::class,
         'theme'          => SetActiveTheme::class,
         'throttle'       => ThrottleRequests::class,
         'update_pending' => UpdatePending::class,
