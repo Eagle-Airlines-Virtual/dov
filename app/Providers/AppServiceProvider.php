@@ -6,7 +6,9 @@ use App\Notifications\Channels\Discord\DiscordWebhook;
 use App\Services\ModuleService;
 use App\Support\ThemeViewFinder;
 use App\Support\Utils;
+use App\View\Components\AirportSelectList;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
@@ -20,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
 
         Paginator::useBootstrap();
         View::share('moduleSvc', app(ModuleService::class));
+
+        Blade::component('airport-select-list', AirportSelectList::class);
 
         Notification::extend('discord_webhook', function ($app) {
             return app(DiscordWebhook::class);
