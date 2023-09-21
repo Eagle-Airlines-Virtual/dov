@@ -23,8 +23,6 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrap();
         View::share('moduleSvc', app(ModuleService::class));
 
-        Blade::component('airport-select-list', AirportSelectList::class);
-
         Notification::extend('discord_webhook', function ($app) {
             return app(DiscordWebhook::class);
         });

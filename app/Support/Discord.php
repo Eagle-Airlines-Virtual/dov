@@ -24,10 +24,8 @@ class Discord
                 ]
             );
 
-            dd($response);
             return $response->id;
         } catch (\Exception $ex) {
-            dd($ex);
             Log::error('Could not get private channel id for '.$discord_id.';'.$ex->getMessage());
             return '';
         }
