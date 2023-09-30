@@ -11,6 +11,7 @@ use Illuminate\Notifications\Notifiable;
 use Laratrust\Contracts\LaratrustUser;
 use Laratrust\Traits\HasRolesAndPermissions;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
 /**
  * @property int              id
@@ -54,7 +55,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @mixin \Illuminate\Notifications\Notifiable
  * @mixin \Laratrust\Traits\HasRolesAndPermissions
  */
-class User extends Authenticatable implements LaratrustUser
+class User extends Authenticatable implements LaratrustUser, JWTSubject
 {
     use HasFactory;
     use HasRelationships;
@@ -322,5 +323,26 @@ class User extends Authenticatable implements LaratrustUser
             Subfleet::class,
             ['typerating_user', Typerating::class, 'typerating_subfleet']
         );
+    }
+
+
+    /**
+     * Get the identifier that will be stored in the subject claim of the JWT.
+     *
+     * @return mixed
+     */
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    /**
+     * Return a key value array, containing any custom claims to be added to the JWT.
+     *
+     * @return array
+     */
+    public function getJWTCustomClaims()
+    {
+        return [];
     }
 }

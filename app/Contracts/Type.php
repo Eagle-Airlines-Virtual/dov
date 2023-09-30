@@ -2,7 +2,14 @@
 
 namespace App\Contracts;
 
-abstract class Type
+use App\Exceptions\InvalidIdentity;
+
+interface Type
 {
+    public static function getType(string $value): string;
+
+    public function __toString(): string;
+
+    public function __toArray(): array;
 
 }

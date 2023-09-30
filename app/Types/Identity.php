@@ -3,14 +3,14 @@
 namespace App\Types;
 
 use App\Contracts\Type;
+use App\Exceptions\InvalidIdentity;
 use Illuminate\Support\Facades\Validator;
 
-class Identity extends Type
+class Identity implements Type
 {
-
     const TYPE_EMAIL = 'email';
 
-    const TYPE_USERNAME = 'username';
+    const TYPE_PILOT_ID = 'pilot_id';
 
     const TYPE_API_KEY = 'api_key';
 
@@ -18,9 +18,24 @@ class Identity extends Type
 
     private string $type;
 
-
     public function __construct(string $value)
     {
+        $this->type = self::getType($value);
+        $this->value = $value;
+    }
+
+    public static function getType(string $value): string
+    {
+        if(self::validateEmail($value))
+            return self::TYPE_EMAIL;
+
+        if(self::validatePilotId($value))
+            return self::TYPE_PILOT_ID;
+
+        if(self::validateApiKey($value))
+            return self::TYPE_API_KEY;
+
+        throw new InvalidIdentity();
     }
 
     public function __toString(): string
@@ -28,9 +43,12 @@ class Identity extends Type
         return $this->value;
     }
 
-    public static function getType(str)
+    public function __toArray(): array
     {
-
+        return [
+            'type' => $this->type,
+            'value' => $this->value
+        ];
     }
 
     public static function validateEmail(string $value): bool
