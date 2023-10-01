@@ -29,6 +29,12 @@ return [
             'extends' => null,
         ],
 
+        'eagleair' => [
+            'extends'         => null,     // doesn't extend any theme
+            'views-path'     => "resources/views/layouts/eagleair", // = resources/views/example_theme
+            'asset-path'     => "public/eagleair", // = public/example_theme
+        ],
+
         // Add your themes here. These settings will override theme.json settings defined for each theme
 
         /*

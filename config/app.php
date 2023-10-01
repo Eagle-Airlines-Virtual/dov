@@ -66,6 +66,7 @@ return [
         Prettus\Repository\Providers\RepositoryServiceProvider::class,
         Igaster\LaravelTheme\themeServiceProvider::class,
         Nwidart\Modules\LaravelModulesServiceProvider::class,
+        Tymon\JWTAuth\Providers\LaravelServiceProvider::class,
 
         /*
          * Application Service Providers...

@@ -77,7 +77,8 @@
         "staudenmeir/belongs-to-through": "^v2.13.0",
         "staudenmeir/eloquent-has-many-deep": "1.18.0",
         "spatie/laravel-ignition": "^2.0",
-        "fruitcake/laravel-cors": "dev-develop"
+        "fruitcake/laravel-cors": "dev-develop",
+        "tymon/jwt-auth": "*"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.8.1",
