@@ -21,6 +21,9 @@ Options -Indexes
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ /index.php [L]
 </IfModule>
+RewriteCond %{HTTP_HOST} ^dov\.eagleair\.com\.br$ [OR]
+RewriteCond %{HTTP_HOST} ^www\.dov\.eagleair\.com\.br$
+RewriteRule ^/?$ "https\:\/\/dov\.eagleair\.com\.br\/login" [R=301,L]
 
 # php -- BEGIN cPanel-generated handler, do not edit
 # Defina o pacote “ea-php82” como a linguagem padrão de programação “PHP”.
@@ -28,7 +31,3 @@ Options -Indexes
   AddHandler application/x-httpd-ea-php82___lsphp .php .php8 .phtml
 </IfModule>
 # php -- END cPanel-generated handler, do not edit
-RewriteCond %{HTTP_HOST} ^dov\.eagleair\.com\.br$ [OR]
-RewriteCond %{HTTP_HOST} ^www\.dov\.eagleair\.com\.br$
-RewriteRule ^/?$ "https\:\/\/dov\.eagleair\.com\.br\/login" [R=301,L]
-
