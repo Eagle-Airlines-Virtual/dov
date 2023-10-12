@@ -3,7 +3,7 @@
 return [
     'themes_path'     => resource_path('views/layouts'), // eg: base_path('resources/themes')
     'asset_not_found' => 'LOG_ERROR',
-    'default'         => 'default',
+    'default'         => 'eagleair',
     'cache'           => true,
 
     /*
@@ -31,8 +31,8 @@ return [
 
         'eagleair' => [
             'extends'         => null,     // doesn't extend any theme
-            'views-path'     => "resources/views/layouts/eagleair", // = resources/views/example_theme
-            'asset-path'     => "public/eagleair", // = public/example_theme
+            'views-path'     => "eagleair", // = resources/views/example_theme
+            'asset-path'     => "eagleair", // = public/example_theme
         ],
 
         // Add your themes here. These settings will override theme.json settings defined for each theme

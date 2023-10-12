@@ -14,7 +14,7 @@
           <div class="content content-center">
             <div class="social-description text-center text-white">
               <h2 class="description text-white">
-              {{ file_get_contents('https://dov.eagleair.com.br/statsapi/index.php?voos'); }}
+{{--              {{ file_get_contents('https://dov.eagleair.com.br/statsapi/index.php?voos'); }}--}}
               </h2>
             </div>
           </div>
@@ -28,7 +28,7 @@
           <div class="content content-center">
             <div class="social-description text-center text-white">
               <h2 class="description text-white">
-              {{ file_get_contents('https://dov.eagleair.com.br/statsapi/index.php?horas'); }}
+{{--              {{ file_get_contents('https://dov.eagleair.com.br/statsapi/index.php?horas'); }}--}}
               </h2>
             </div>
           </div>
@@ -42,7 +42,7 @@
           <div class="content content-center">
             <div class="social-description text-center text-white">
               <h2 class="description text-white">
-              {{ file_get_contents('https://dov.eagleair.com.br/statsapi/index.php?milhas'); }} nm
+{{--              {{ file_get_contents('https://dov.eagleair.com.br/statsapi/index.php?milhas'); }} nm--}}
               </h2>
             </div>
           </div>
@@ -56,7 +56,7 @@
           <div class="content content-center">
             <div class="social-description text-center text-white">
               <h2 class="description text-white">
-              {{ file_get_contents('https://dov.eagleair.com.br/statsapi/index.php?td'); }} fpm
+{{--              {{ file_get_contents('https://dov.eagleair.com.br/statsapi/index.php?td'); }} fpm--}}
               </h2>
             </div>
           </div>
