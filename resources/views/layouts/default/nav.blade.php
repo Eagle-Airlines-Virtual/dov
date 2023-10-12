@@ -17,21 +17,12 @@
         </a>
       </li>
 
-{{--      <li class="nav-item">--}}
-{{--        <a class="nav-link" href="{{ route('frontend.pilots.index') }}">--}}
-{{--          <i class="fas fa-users"></i>--}}
-{{--          <p>{{ trans_choice('common.pilot', 2) }}</p>--}}
-{{--        </a>--}}
-{{--      </li>--}}
-
-{{--      @if(Auth::check())--}}
-{{--      <li class="nav-item">--}}
-{{--        <a class="nav-link" href="{{ route('frontend.statspilots.index') }}">--}}
-{{--          <i class="fas fa-star"></i>--}}
-{{--          <p>Pilots Stats</p>--}}
-{{--        </a>--}}
-{{--      </li>--}}
-{{--      @endif--}}
+      <li class="nav-item">
+        <a class="nav-link" href="{{ route('frontend.pilots.index') }}">
+          <i class="fas fa-users"></i>
+          <p>{{ trans_choice('common.pilot', 2) }}</p>
+        </a>
+      </li>
 
       {{-- Show the module links that don't require being logged in --}}
       @foreach($moduleSvc->getFrontendLinks($logged_in=false) as &$link)

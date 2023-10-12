@@ -43,12 +43,12 @@ abstract class Enum
      *
      * @return string
      */
-    final public static function label($value, ?string $location = null): string
+    final public static function label($value): string
     {
         if (isset(static::$labels[$value])) {
             $val = static::$labels[$value];
             if (strpos($val, '.') !== false) {
-                return trans($val, [], $location);
+                return trans($val);
             }
 
             return $val;

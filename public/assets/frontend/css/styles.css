@@ -1,57 +1,6 @@
 /**
  *
  */
-
-/* Editado por Luan Lopes */
-/* START */
-
-.navbar {
-    background-color: #001746 !important;
-}
-
-body.login-page {
-    background-color: #001746 !important;
-}
-
-.nav-tabs {
-    background-color: #001746 !important;
-}
-
-.copyright {
-    color: #fff;
-}
-
-.cc-banner.cc-top {
-    top: auto !important;
-}
-
-.cc-top {
-    bottom: 0px !important;
-}
-
-.cc-btn.cc-dismiss {
-    background-color: #001746;
-}
-
-img.rounded-circle {
-    width: 80px !important;
-}
-
-.title.title-up a {
-    text-decoration: none;
-    overflow: hidden;
-    max-width: 85%;
-    width: fit-content;
-    display: inline-block;
-    white-space: nowrap;
-}
-
-.card-signup {
-    margin-top: 5px !important;
-}
-
-/* END */
-
 .select2-container {
     margin-top: 2px;
 }
@@ -72,7 +21,7 @@ img.rounded-circle {
 }
 
 .dashboard-box {
-    background: #001046;
+    background: #067ec1;
     color: #FFF;
 }
 
@@ -134,11 +83,11 @@ img.rounded-circle {
 }
 
 .blue-bg {
-    background: #001046;
+    background: #067ec1;
 }
 
 .border-blue-bottom {
-    border-bottom: 3px solid #001046;
+    border-bottom: 3px solid #067ec1;
 }
 
 .full-height {

@@ -128,12 +128,12 @@ class FinanceService extends Service
      * grouped transactions (e.g, "Fares" and "Ground Handling", etc)
      *
      * @param Airline $airline
-     * @param string $start_date YYYY-MM-DD
-     * @param string $end_date   YYYY-MM-DD
+     * @param string  $start_date YYYY-MM-DD
+     * @param string  $end_date   YYYY-MM-DD
      *
      * @return array
      */
-    public function getAirlineTransactionsBetween(Airline $airline, string $start_date, string $end_date): array
+    public function getAirlineTransactionsBetween($airline, $start_date, $end_date)
     {
         // Return all the transactions, grouped by the transaction group
         $transactions = JournalTransaction::groupBy('transaction_group', 'currency')

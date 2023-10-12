@@ -1,5 +1,4 @@
-@php use Illuminate\Support\Facades\Auth; @endphp
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
@@ -31,7 +30,7 @@
 <body>
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg " style="background: #067ec1;">
-  <a class="navbar-brand text-white" href="{{ !Auth::check() ? url('/login') : url('/dashboard') }}" style="margin-left: 20px;">
+  <a class="navbar-brand text-white" href="{{ url('/') }}" style="margin-left: 20px;">
     <img src="{{ public_asset('/assets/img/logo_blue_bg.svg') }}" width="135px" alt=""/>
   </a>
   <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navigation"
@@ -102,7 +101,7 @@ with the EU Cookie Law https://privacypolicies.com/blog/eu-cookie-law
 
 <script>
   $(document).ready(function () {
-    $(".select2").select2({width: 'resolve'});
+    $("select.select2").select2({width: 'resolve'});
   });
 </script>
 
@@ -112,22 +111,18 @@ You can modify to any tracking code and re-use that settings field, or
 just remove it completely. Only added as a convenience factor
 --}}
 @php
-  $gtag = setting('general.google_analytics_id');
+$gtag = setting('general.google_analytics_id');
 @endphp
 @if($gtag)
   <!-- Global site tag (gtag.js) - Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id={{ $gtag }}"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ $gtag }}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
 
-    function gtag() {
-      dataLayer.push(arguments);
-    }
-
-    gtag('js', new Date());
-
-    gtag('config', '{{ $gtag }}');
-  </script>
+  gtag('config', '{{ $gtag }}');
+</script>
 @endif
 {{-- End of the Google Analytics code --}}
 

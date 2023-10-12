@@ -4,7 +4,7 @@
 @section('content')
   <div class="row">
     <div class="col-sm-12">
-      <h2 class="description">@lang('common.stats')</h2>
+      <h2 class="description">@lang('common.status')</h2>
         <div class="col-sm-2 card blue-bg">
           <div class="header header-primary text-center blue-bg">
             <h3 class="title title-up text-white">
