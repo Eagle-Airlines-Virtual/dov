@@ -32,7 +32,7 @@
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg " style="background: #067ec1;">
   <a class="navbar-brand text-white" href="{{ !Auth::check() ? url('/login') : url('/dashboard') }}" style="margin-left: 20px;">
-    <img src="{{ public_asset('/assets/img/logo_blue_bg.svg') }}" width="135px" alt=""/>
+    <img src="{{ public_asset('/assets/img/eagle_logo_white.png') }}" width="135px" alt=""/>
   </a>
   <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navigation"
           aria-controls="navigation" aria-expanded="false" aria-label="Toggle navigation">
