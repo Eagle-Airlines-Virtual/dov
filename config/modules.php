@@ -21,7 +21,7 @@ return [
             'views/admin'            => 'Resources/views/layouts/admin.blade.php',
             'listener-test'          => 'Listeners/TestEventListener.php',
             'controller-index'       => 'Http/Controllers/Frontend/IndexController.php',
-            'controller-api'         => 'Http/Controllers/Api/StatController.php',
+            'controller-api'         => 'Http/Controllers/Api/ApiController.php',
             'controller-admin'       => 'Http/Controllers/Admin/AdminController.php',
             'config'                 => 'Config/config.php',
             'composer'               => 'composer.json',

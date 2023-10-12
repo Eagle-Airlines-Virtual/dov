@@ -19,7 +19,6 @@ return [
     'download'       => 'Download|Downloads',
     'from'           => 'from',
     'to'             => 'to',
-    'stats'          => 'Stats',
     'state'          => 'State',
     'status'         => 'Status',
     'departure'      => 'Departure',
