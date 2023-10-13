@@ -6,7 +6,7 @@
     <div class="col-sm-3"></div>
     <div class="col-sm-6">
 
-      {{ Form::open(['url' => '/register', 'class' => 'form-signin']) }}
+      {{ Form::open(['url' => route('auth.register'), 'class' => 'form-signin']) }}
 
       <div class="panel periodic-login">
         <div class="panel-body">
@@ -35,20 +35,21 @@
             <p class="text-danger">{{ $errors->first('airline_id') }}</p>
           @endif
 
+          <label for="country" class="control-label">@lang('common.country')</label>
+          <div class="input-group form-group-no-border {{ $errors->has('country') ? 'has-danger' : '' }}">
+            {{ Form::hidden('country', $selectedCountry) }}
+            {{ Form::select('country', $countries, $selectedCountry, ['class' => 'form-control select2', 'disabled' => true]) }}
+          </div>
+          @if ($errors->has('country'))
+            <p class="text-danger">{{ $errors->first('country') }}</p>
+          @endif
+
           <label for="home_airport" class="control-label">@lang('airports.home')</label>
           <div class="input-group form-group-no-border {{ $errors->has('home_airport') ? 'has-danger' : '' }}">
             {{ Form::select('home_airport_id', $airports, null , ['class' => 'form-control select2']) }}
           </div>
           @if ($errors->has('home_airport_id'))
             <p class="text-danger">{{ $errors->first('home_airport_id') }}</p>
-          @endif
-
-          <label for="country" class="control-label">@lang('common.country')</label>
-          <div class="input-group form-group-no-border {{ $errors->has('country') ? 'has-danger' : '' }}">
-            {{ Form::select('country', $countries, null, ['class' => 'form-control select2' ]) }}
-          </div>
-          @if ($errors->has('country'))
-            <p class="text-danger">{{ $errors->first('country') }}</p>
           @endif
 
           <label for="timezone" class="control-label">@lang('common.timezone')</label>
@@ -139,6 +140,10 @@
           </table>
 
           <div style="width: 100%; text-align: right; padding-top: 20px;">
+            <a href="{{ route('auth.country.form') }}" role="button" class="btn btn-default">
+              Cancelar
+            </a>
+
             {{ Form::submit(__('auth.register'), [
                 'id' => 'register_button',
                 'class' => 'btn btn-primary',

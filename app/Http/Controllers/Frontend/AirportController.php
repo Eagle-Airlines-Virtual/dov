@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Contracts\Controller;
+use App\Http\Resources\Airport as AirportResource;
 use App\Repositories\AirportRepository;
 use App\Repositories\FlightRepository;
 use Illuminate\Http\RedirectResponse;

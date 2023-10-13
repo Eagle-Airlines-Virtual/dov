@@ -172,7 +172,12 @@ class RouteServiceProvider extends ServiceProvider
             });
 
             Route::get('/logout', 'Auth\LoginController@logout')->name('auth.logout');
-            Auth::routes(['verify' => true]);
+            Auth::routes(['verify' => true, 'register' => false]);
+
+            Route::redirect('register', 'country');
+            Route::get('country', 'Auth\RegisterController@showCountryForm')->name('auth.country.form');
+            Route::get('country/{country}/register' , 'Auth\RegisterController@showRegistrationForm')->name('auth.register.form');
+            Route::post('auth/register', 'Auth\RegisterController@register')->name('auth.register');
         });
     }
 
