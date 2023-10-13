@@ -27,10 +27,15 @@
   @yield('scripts_head')
   {{-- End of the required stuff in the head block --}}
 
+  <style>
+    .card-primary {
+      background: #001746;
+    }
+  </style>
 </head>
 <body>
 <!-- Navbar -->
-<nav class="navbar navbar-expand-lg " style="background: #067ec1;">
+<nav class="navbar navbar-expand-lg " style="background: #001746;">
   <a class="navbar-brand text-white" href="{{ !Auth::check() ? url('/login') : url('/dashboard') }}" style="margin-left: 20px;">
     <img src="{{ public_asset('/assets/img/eagle_logo_white.png') }}" width="135px" alt=""/>
   </a>
@@ -91,7 +96,7 @@ with the EU Cookie Law https://privacypolicies.com/blog/eu-cookie-law
           text: "#838391"
         },
         button: {
-          "background": "#067ec1"
+          "background": "#001746"
         }
       },
       position: "top",
