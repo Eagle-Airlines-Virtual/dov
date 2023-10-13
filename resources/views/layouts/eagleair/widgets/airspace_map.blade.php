@@ -1,4 +1,5 @@
-<div id="map" style="width: {{ $config['width'] }}; height: {{ $config['height'] }}"></div>
+<div id="map" style="width: {{ $config['width'] }}; height: {{ $config['height'] }}">
+</div>
 
 @section('scripts')
   <script>

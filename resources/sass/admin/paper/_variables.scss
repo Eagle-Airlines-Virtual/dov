@@ -1,4 +1,4 @@
-$phpvms-blue:                #067ec1 !default;
+$phpvms-blue:                #001746 !default;
 
 $font-color: #4b4743 !default;
 $fill-font-color: rgba(182, 182, 182, 0.7);
@@ -48,7 +48,7 @@ $default-bg:                 #FFFFFF !default;
 $default-states-color:       #403D39 !default;
 
 //$primary-color:              #7A9E9F !default;
-$primary-color: #067ec1 !default;
+$primary-color: #001746 !default;
 $primary-bg: darken($primary-color, 5%) !default;
 $primary-states-color:       #427C89 !default;
 
@@ -57,12 +57,12 @@ $success-color: #18ce0f !default;
 $success-bg: darken($success-color, 5%) !default;
 $success-states-color: darken($success-color, 5%) !default;
 
-$info-color: #067ec1 !default; //#2CA8FF !default;
-$info-states-color: #0688d0 !default; // #109CFF !default;
+$info-color: #001746 !default; //#2CA8FF !default;
+$info-states-color: #001746 !default; // #109CFF !default;
 $info-color-opacity: rgba(44, 168, 255, .3) !default;
 $info-color-alert: rgba(44, 168, 255, .8) !default;
 
-$warning-color: #FFB236 !default;
+$warning-color: #db9623 !default;
 $warning-states-color: darken($warning-color, 5%) !default;
 $warning-color-opacity: rgba(255, 178, 54, .3) !default;
 $warning-color-alert: rgba(255, 178, 54, .8) !default;
@@ -274,7 +274,7 @@ $orange-navbar:             rgba(#FF9500, .98);
 $red-navbar:                rgba(#FF4C40, .98);
 
 $bg-nude:               #ebeff2 !default;
-$bg-primary:            #8ECFD5 !default;
+$bg-primary:            #001746 !default;
 $bg-info:               #7CE4FE !default;
 $bg-success:            #8EF3C5 !default;
 $bg-warning:            #FFE28C !default;

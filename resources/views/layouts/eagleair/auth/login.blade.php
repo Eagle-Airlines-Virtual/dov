@@ -6,9 +6,11 @@
     <div class="card card-login card-plain">
       {{ Form::open(['url' => url('/login'), 'method' => 'post', 'class' => 'form']) }}
       <div class="header header-primary text-center">
-        <div class="logo-container" style="width: 320px;">
-          <img src="{{ public_asset('/assets/frontend/img/logo.svg') }}" width="320" height="320"
-               style="background: #FFF">
+        <div class="logo-container py-5" style="width: 320px;">
+          <img src="{{ public_asset('/assets/frontend/img/eagle_logo_white.png') }}"
+               width="320"
+               alt="Eagle Logo"
+          />
         </div>
       </div>
       <div class="card-body">
