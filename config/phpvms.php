@@ -33,7 +33,7 @@ return [
     /*
      * Where to redirect after registration
      */
-    'registration_redirect' => '/profile',
+    'registration_redirect' => '/login',
 
     /*
      * Point to the class to use to retrieve the METAR string. If this
