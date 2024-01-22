@@ -152,8 +152,7 @@ class RouteServiceProvider extends ServiceProvider
                 'prefix'    => '',
                 'as'        => 'frontend.',
             ], function () {
-//                Route::get('/', 'HomeController@index')->name('home');
-                Route::redirect('', 'login');
+                Route::get('/', 'HomeController@index')->name('home');
                 Route::get('r/{id}', 'PirepController@show')->name('pirep.show.public');
                 Route::get('pireps/{id}', 'PirepController@show')->name('pireps.show');
 
@@ -173,12 +172,7 @@ class RouteServiceProvider extends ServiceProvider
             });
 
             Route::get('/logout', 'Auth\LoginController@logout')->name('auth.logout');
-            Auth::routes(['verify' => true, 'register' => false]);
-
-            Route::redirect('register', 'country');
-            Route::get('country', 'Auth\RegisterController@showCountryForm')->name('auth.country.form');
-            Route::get('country/{country}/register' , 'Auth\RegisterController@showRegistrationForm')->name('auth.register.form');
-            Route::post('auth/register', 'Auth\RegisterController@register')->name('auth.register');
+            Auth::routes(['verify' => true]);
         });
     }
 

@@ -13,7 +13,6 @@ use App\Services\UserService;
 use App\Support\Countries;
 use App\Support\HttpClient;
 use App\Support\Timezonelist;
-use Exception;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Http\RedirectResponse;
@@ -22,7 +21,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator as ValidatorFacade;
 use Illuminate\View\View;
-use RuntimeException;
 
 class RegisterController extends Controller
 {
@@ -54,31 +52,19 @@ class RegisterController extends Controller
         $this->redirectTo = config('phpvms.registration_redirect');
     }
 
-    public function showCountryForm(): View
-    {
-        return view('auth.select_country', [
-            'countries' => Countries::getSelectList(),
-        ]);
-    }
-
     /**
-     * @throws Exception
+     * @throws \Exception
      *
      * @return View
      */
-    public function showRegistrationForm(string $country): View
+    public function showRegistrationForm(): View
     {
         $airlines = $this->airlineRepo->selectBoxList();
         $userFields = UserField::where(['show_on_registration' => true, 'active' => true])->get();
 
-        $airports = $this->airportRepo
-            ->whereOrder(['country' => $country], 'name', 'asc')
-            ->selectBoxList();
-
         return view('auth.register', [
-            'airports'   => $airports,
+            'airports'   => [],
             'airlines'   => $airlines,
-            'selectedCountry' => $country,
             'countries'  => Countries::getSelectList(),
             'timezones'  => Timezonelist::toArray(),
             'userFields' => $userFields,
@@ -147,9 +133,12 @@ class RegisterController extends Controller
     /**
      * Get a validator for an incoming registration request.
      *
-     * @param Request $request
+     * @param array $opts
+     *
+     * @throws \Exception
+     * @throws \RuntimeException
+     *
      * @return User
-     * @throws Exception
      */
     protected function create(Request $request): User
     {
@@ -187,7 +176,7 @@ class RegisterController extends Controller
      *
      * @param Request $request
      *
-     * @throws Exception
+     * @throws \Exception
      *
      * @return RedirectResponse|View
      */

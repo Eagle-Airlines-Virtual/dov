@@ -66,7 +66,7 @@
 
       </div>
 
-      <div class="nav nav-tabs" role="tablist" style="background: #001746; color: #FFF;">
+      <div class="nav nav-tabs" role="tablist" style="background: #067ec1; color: #FFF;">
         @lang('dashboard.yourlastreport')
       </div>
       <div class="card border-blue-bottom">
@@ -87,7 +87,7 @@
     {{-- Sidebar --}}
     <div class="col-sm-4">
       <div class="card">
-        <div class="nav nav-tabs" role="tablist" style="background: #001746; color: #FFF;">
+        <div class="nav nav-tabs" role="tablist" style="background: #067ec1; color: #FFF;">
           @lang('dashboard.weatherat', ['ICAO' => $current_airport])
         </div>
         <div class="card-body">
@@ -99,7 +99,7 @@
       </div>
 
       <div class="card">
-        <div class="nav nav-tabs" role="tablist" style="background: #001746; color: #FFF;">
+        <div class="nav nav-tabs" role="tablist" style="background: #067ec1; color: #FFF;">
           @lang('dashboard.recentreports')
         </div>
         <div class="card-body">
@@ -111,7 +111,7 @@
       </div>
 
       <div class="card">
-        <div class="nav nav-tabs" role="tablist" style="background: #001746; color: #FFF;">
+        <div class="nav nav-tabs" role="tablist" style="background: #067ec1; color: #FFF;">
           @lang('common.newestpilots')
         </div>
         <div class="card-body">

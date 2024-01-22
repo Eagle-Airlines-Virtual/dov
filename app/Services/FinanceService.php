@@ -141,7 +141,7 @@ class FinanceService extends Service
                          currency, 
                          SUM(credit) as sum_credits, 
                          SUM(debit) as sum_debits')
-            ->where(['journal_id' => $airline->journal?->id])
+            ->where(['journal_id' => $airline->journal->id])
             ->whereBetween('created_at', [$start_date, $end_date], 'AND')
             ->orderBy('sum_credits', 'desc')
             ->orderBy('sum_debits', 'desc')

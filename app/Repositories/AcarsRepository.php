@@ -66,10 +66,7 @@ class AcarsRepository extends Repository
         ];
 
         $q = Pirep::with($with)
-            ->whereIn('state', [
-                PirepState::IN_PROGRESS,
-                PirepState::PENDING
-            ]);
+            ->where(['state' => PirepState::IN_PROGRESS]);
 
         if ($live_time !== null && $live_time > 0) {
             $st = Carbon::now()->subHours($live_time);
