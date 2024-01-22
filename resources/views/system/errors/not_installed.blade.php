@@ -26,7 +26,7 @@
 
 <body>
 <!-- Navbar -->
-<nav class="navbar navbar-toggleable-md" style="background: #001746;">
+<nav class="navbar navbar-toggleable-md" style="background: #067ec1;">
   <div class="container" style="width: 85%!important;">
     <div class="navbar-translate">
       <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"

@@ -7,10 +7,9 @@
 
 
   <div class="sidebar-wrapper">
-    <div class="logo" style="background: #001746; margin: 0px; text-align: center; min-height: 74px;">
+    <div class="logo" style="background: #067ec1; margin: 0px; text-align: center; min-height: 74px;">
       <a href="{{ url('/dashboard') }}">
-        <img src="{{ public_asset('/assets/img/eagle_logo_white.png') }}"
-             width="110px" alt="Eagle Logo">
+        <img src="{{ public_asset('/assets/img/logo_blue_bg.svg') }}" width="110px" style="">
       </a>
     </div>
 

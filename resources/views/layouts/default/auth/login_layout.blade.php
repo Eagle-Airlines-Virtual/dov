@@ -17,7 +17,7 @@
   @yield('css')
 </head>
 
-<body class="login-page" style="background: #001746;">
+<body class="login-page" style="background: #067ec1;">
 <!-- Navbar -->
 
 <!-- End Navbar -->

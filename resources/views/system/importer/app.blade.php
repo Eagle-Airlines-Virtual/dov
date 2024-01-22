@@ -35,7 +35,7 @@
   </style>
 </head>
 
-<body class="login-page" style="background: #001746;">
+<body class="login-page" style="background: #067ec1;">
 <div class="page-header clear-filter">
   <div class="content">
     <div class="container">

@@ -29,7 +29,7 @@
 </head>
 <body>
 <!-- Navbar -->
-<nav class="navbar navbar-expand-lg " style="background: #001746;">
+<nav class="navbar navbar-expand-lg " style="background: #067ec1;">
   <a class="navbar-brand text-white" href="{{ url('/') }}" style="margin-left: 20px;">
     <img src="{{ public_asset('/assets/img/logo_blue_bg.svg') }}" width="135px" alt=""/>
   </a>
@@ -90,7 +90,7 @@ with the EU Cookie Law https://privacypolicies.com/blog/eu-cookie-law
           text: "#838391"
         },
         button: {
-          "background": "#001746"
+          "background": "#067ec1"
         }
       },
       position: "top",
