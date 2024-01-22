@@ -22,10 +22,6 @@ Options -Indexes
     RewriteRule ^ /index.php [L]
 </IfModule>
 
-RewriteCond %{HTTP_HOST} ^dov\.eagleair\.com\.br$ [OR]
-RewriteCond %{HTTP_HOST} ^www\.dov\.eagleair\.com\.br$
-RewriteRule ^/?$ "https\:\/\/dov\.eagleair\.com\.br\/login" [R=301,L]
-
 # php -- BEGIN cPanel-generated handler, do not edit
 # Defina o pacote “ea-php82” como a linguagem padrão de programação “PHP”.
 <IfModule mime_module>
