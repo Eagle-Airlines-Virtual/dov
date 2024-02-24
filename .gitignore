@@ -84,3 +84,11 @@ sync.sh
 /phpunit.xml
 .phpunit.result.cache
 ###< phpunit/phpunit ###
+app/Database/factories/SimBriefFactory.php
+modules/Vacentral/composer.json:Zone.Identifier
+modules/Vacentral/Config/config.php:Zone.Identifier
+modules/Vacentral/Listeners/AcarsUpdateListener.php:Zone.Identifier
+modules/Vacentral/Listeners/PirepAcceptedEventListener.php:Zone.Identifier
+modules/Vacentral/module.json:Zone.Identifier
+modules/Vacentral/Providers/AppServiceProvider.php:Zone.Identifier
+modules/Vacentral/Providers/EventServiceProvider.php:Zone.Identifier
