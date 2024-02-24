@@ -3,6 +3,7 @@
 return [
     'flightnumber'     => 'Flight Number',
     'flighttime'       => 'Flight Time',
+    'timeremaining'    => 'Remaining Time',
     'flighttype'       => 'Flight Type',
     'flighthours'      => 'Flight Hours',
     'code'             => 'Code',

@@ -25,7 +25,7 @@ class LiveMap extends Widget
         $geoSvc = app(GeoService::class);
         $acarsRepo = app(AcarsRepository::class);
 
-        $pireps = $acarsRepo->getPositions(setting('acars.live_time', 0));
+        $pireps = $acarsRepo->getPositions(0);
         $positions = $geoSvc->getFeatureForLiveFlights($pireps);
 
         $center_coords = setting('acars.center_coords', '0,0');

@@ -15,10 +15,10 @@ use function count;
 class AviationWeather extends Metar
 {
     private const METAR_URL =
-        'https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=metars&requestType=retrieve&format=xml&hoursBeforeNow=3&mostRecent=true&stationString=';
+        'https://aviationweather.gov/api/data/metar?&format=xml&hours=3&mostRecent=true&ids=';
 
     private const TAF_URL =
-        'https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=tafs&requestType=retrieve&format=xml&hoursBeforeNow=3&mostRecent=true&stationString=';
+        'https://aviationweather.gov/api/data/taf?&format=xml&mostRecent=true&ids=';
 
     /**
      * @param HttpClient $httpClient

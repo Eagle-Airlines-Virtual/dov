@@ -3,6 +3,7 @@
 return [
     'flightnumber'     => 'Número do Voo',
     'flighttime'       => 'Tempo do Voo',
+    'timeremaining'    => 'Tempo Restante',
     'flighttype'       => 'Tipo de Voo',
     'flighthours'      => 'Horas de Voo',
     'code'             => 'Código',

@@ -209,7 +209,9 @@ class FlightService extends Service
                 && $flight->route_leg === $value->route_leg;
         });
 
-        return !($found_flights->count() === 0);
+        // CRIAR VOOS COM NUMERO DE VOO REPETIDO
+        // OLD return !($found_flights->count() === 0);
+        return false;
     }
 
     /**
