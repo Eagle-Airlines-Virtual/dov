@@ -32,6 +32,7 @@ class Kernel extends HttpKernel
         CheckForMaintenanceMode::class,
         TrimStrings::class,
         ConvertEmptyStringsToNull::class,
+        \Illuminate\Http\Middleware\HandleCors::class,
     ];
 
     protected $middlewareGroups = [

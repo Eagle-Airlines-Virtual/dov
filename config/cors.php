@@ -27,8 +27,7 @@ return [
     ],
 
     'allowed_origins' => [
-        'https://eagleair.com.br',
-	'http://localhost:3000'
+        '*'
     ],
 
     'allowed_origins_patterns' => [],

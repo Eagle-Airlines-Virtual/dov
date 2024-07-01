@@ -17,6 +17,7 @@ use Kyslik\ColumnSortable\Sortable;
 use Laratrust\Contracts\LaratrustUser;
 use Laratrust\Traits\HasRolesAndPermissions;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
 /**
  * @property int              id
@@ -63,7 +64,7 @@ use Staudenmeir\EloquentHasManyDeep\HasRelationships;
  * @mixin \Illuminate\Notifications\Notifiable
  * @mixin \Laratrust\Traits\HasRolesAndPermissions
  */
-class User extends Authenticatable implements LaratrustUser, MustVerifyEmail
+class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JWTSubject
 {
     use HasFactory;
     use HasRelationships;
@@ -340,5 +341,15 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail
     public function rated_subfleets()
     {
         return $this->hasManyDeep(Subfleet::class, ['typerating_user', Typerating::class, 'typerating_subfleet']);
+    }
+
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    public function getJWTCustomClaims(): array
+    {
+        return [];
     }
 }
