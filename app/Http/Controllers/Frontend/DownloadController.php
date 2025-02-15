@@ -22,8 +22,6 @@ class DownloadController extends Controller
 {
     /**
      * Show all of the available files
-     *
-     * @return View
      */
     public function index(): View
     {
@@ -74,7 +72,7 @@ class DownloadController extends Controller
             $downloadUrl = DB::table('vmsacars_config')->where(['id' => 'download_url'])->first();
             if (!empty($downloadUrl) && !empty($downloadUrl->value)) {
                 $regrouped_files['ACARS'] = collect([
-                    new File(['id' => 'vmsacars', 'name' => 'ACARS Client']),
+                    new File(['id' => 'vmsacars', 'name' => 'ACARS Client', 'disk' => null, 'path' => $downloadUrl->value]),
                 ]);
             }
         } catch (ModuleNotFoundException) {
@@ -90,10 +88,6 @@ class DownloadController extends Controller
 
     /**
      * Download a specific file
-     *
-     * @param string $id
-     *
-     * @return RedirectResponse|StreamedResponse
      */
     public function show(string $id): RedirectResponse|StreamedResponse
     {

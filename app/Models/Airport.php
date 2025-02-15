@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Kyslik\ColumnSortable\Sortable;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Class Airport
@@ -21,6 +23,7 @@ use Kyslik\ColumnSortable\Sortable;
  * @property string full_name
  * @property string description
  * @property string location
+ * @property string region
  * @property string country
  * @property string timezone
  * @property string notes
@@ -30,12 +33,15 @@ use Kyslik\ColumnSortable\Sortable;
  * @property float  fuel_mogas_cost
  * @property float  lat
  * @property float  lon
+ * @property int    elevation
+ * @property bool   hub
  */
 class Airport extends Model
 {
     use ExpensableTrait;
     use FilesTrait;
     use HasFactory;
+    use LogsActivity;
     use SoftDeletes;
     use Sortable;
 
@@ -53,9 +59,11 @@ class Airport extends Model
         'icao',
         'name',
         'location',
+        'region',
         'country',
         'lat',
         'lon',
+        'elevation',
         'hub',
         'timezone',
         'tz',
@@ -84,8 +92,11 @@ class Airport extends Model
         'iata'                 => 'sometimes|nullable',
         'name'                 => 'required',
         'location'             => 'sometimes',
+        'region'               => 'sometimes',
+        'country'              => 'sometimes',
         'lat'                  => 'required|numeric',
         'lon'                  => 'required|numeric',
+        'elevation'            => 'nullable|numeric',
         'ground_handling_cost' => 'nullable|numeric',
         'fuel_100ll_cost'      => 'nullable|numeric',
         'fuel_jeta_cost'       => 'nullable|numeric',
@@ -97,7 +108,11 @@ class Airport extends Model
         'iata',
         'icao',
         'name',
+        'hub',
+        'notes',
+        'elevation',
         'location',
+        'region',
         'country',
     ];
 
@@ -126,7 +141,7 @@ class Airport extends Model
 
     /**
      * Return full name like:
-     * KJFK/JFK - John F Kennedy
+     * KJFK - John F Kennedy
      *
      * @return string
      */
@@ -138,10 +153,8 @@ class Airport extends Model
     }
 
     /**
-     * Return full name like:
-     * KJFK/JFK - John F Kennedy
-     *
-     * @return Attribute
+     * Return full description like:
+     * KJFK/JFK - John F Kennedy (hub)
      */
     public function description(): Attribute
     {
@@ -155,8 +168,6 @@ class Airport extends Model
 
     /**
      * Shortcut for timezone
-     *
-     * @return Attribute
      */
     public function tz(): Attribute
     {
@@ -166,6 +177,14 @@ class Airport extends Model
                 'timezone' => $value,
             ]
         );
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     /**

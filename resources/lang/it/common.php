@@ -16,7 +16,7 @@ return [
     'register'       => 'Registrazione',
     'timezone'       => 'Fuso Orario',
     'country'        => 'Paese',
-    'download'       => 'Download|Downloads',
+    'download'       => 'Download|DownloadList',
     'from'           => 'da',
     'to'             => 'a',
     'state'          => 'Stato',
@@ -59,4 +59,9 @@ return [
         'sat'   => 'Sabato',
         'sun'   => 'Domenica',
     ],
+    'external_redirection' => 'Ridirezionamento Esterno',
+    'abouttoleave'         => 'Stai per lasciare questo sito e sarai reindirizzato a',
+    'wanttocontinue'       => 'Vuoi continuare?',
+    'continue'             => 'Continua',
+    'alwaystrustdomain'    => 'Affidati sempre a questo dominio',
 ];

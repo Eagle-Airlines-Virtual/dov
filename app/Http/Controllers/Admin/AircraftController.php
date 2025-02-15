@@ -15,7 +15,9 @@ use App\Repositories\AircraftRepository;
 use App\Repositories\AirportRepository;
 use App\Services\ExportService;
 use App\Services\FileService;
+use App\Services\FinanceService;
 use App\Services\ImportService;
+use App\Support\Units\Mass;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -26,28 +28,16 @@ class AircraftController extends Controller
 {
     use Importable;
 
-    /**
-     * AircraftController constructor.
-     *
-     * @param AirportRepository  $airportRepo
-     * @param AircraftRepository $aircraftRepo
-     * @param FileService        $fileSvc
-     * @param ImportService      $importSvc
-     */
     public function __construct(
         private readonly AirportRepository $airportRepo,
         private readonly AircraftRepository $aircraftRepo,
         private readonly FileService $fileSvc,
         private readonly ImportService $importSvc,
-    ) {
-    }
+        private readonly FinanceService $financeSvc,
+    ) {}
 
     /**
      * Display a listing of the Aircraft.
-     *
-     * @param Request $request
-     *
-     * @return View
      */
     public function index(Request $request): View
     {
@@ -58,21 +48,45 @@ class AircraftController extends Controller
             $w['subfleet_id'] = $request->input('subfleet');
         }
 
-        $aircraft = $this->aircraftRepo->with(['subfleet'])->whereOrder($w, 'registration', 'asc');
-        $aircraft = $aircraft->all();
+        $aircraft = $this->aircraftRepo->with(['subfleet'])->where($w)->sortable('registration')->get();
+        $trashed = $this->aircraftRepo->onlyTrashed()->orderBy('deleted_at', 'desc')->get();
 
         return view('admin.aircraft.index', [
             'aircraft'    => $aircraft,
             'subfleet_id' => $request->input('subfleet'),
+            'trashed'     => $trashed,
         ]);
     }
 
     /**
+     * Recycle Bin operations, either restore or permanently delete the object
+     */
+    public function trashbin(Request $request)
+    {
+        $object_id = (isset($request->object_id)) ? $request->object_id : null;
+
+        $aircraft = Aircraft::onlyTrashed()->withCount('pireps')->where('id', $object_id)->first();
+
+        if ($object_id && $request->action === 'restore') {
+            $aircraft->restore();
+            Flash::success('Aircraft RESTORED successfully.');
+        } elseif ($object_id && $request->action === 'delete') {
+            // Check if the aircraft is used or not
+            if ($aircraft->pireps_count > 0) {
+                Flash::info('Can not delete aircraft, it is used in pireps');
+            } else {
+                $aircraft->forceDelete();
+                Flash::error('Aircraft DELETED PERMANENTLY.');
+            }
+        } else {
+            Flash::info('Nothing done!');
+        }
+
+        return back();
+    }
+
+    /**
      * Show the form for creating a new Aircraft.
-     *
-     * @param Request $request
-     *
-     * @return View
      */
     public function create(Request $request): View
     {
@@ -88,18 +102,22 @@ class AircraftController extends Controller
     /**
      * Store a newly created Aircraft in storage.
      *
-     * @param \App\Http\Requests\CreateAircraftRequest $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return \Illuminate\Http\RedirectResponse
      */
     public function store(CreateAircraftRequest $request): RedirectResponse
     {
         $attrs = $request->all();
+        // Set the correct mass units
+        $attrs['dow'] = (filled($attrs['dow']) && $attrs['dow'] > 0) ? Mass::make((float) $request->input('dow'), setting('units.weight')) : null;
+        $attrs['zfw'] = (filled($attrs['zfw']) && $attrs['zfw'] > 0) ? Mass::make((float) $request->input('zfw'), setting('units.weight')) : null;
+        $attrs['mtow'] = (filled($attrs['mtow']) && $attrs['mtow'] > 0) ? Mass::make((float) $request->input('mtow'), setting('units.weight')) : null;
+        $attrs['mlw'] = (filled($attrs['mlw']) && $attrs['mlw'] > 0) ? Mass::make((float) $request->input('mlw'), setting('units.weight')) : null;
+
         $aircraft = $this->aircraftRepo->create($attrs);
 
         Flash::success('Aircraft saved successfully.');
+
         return redirect(route('admin.aircraft.edit', [$aircraft->id]));
     }
 
@@ -107,8 +125,6 @@ class AircraftController extends Controller
      * Display the specified Aircraft.
      *
      * @param mixed $id
-     *
-     * @return View
      */
     public function show($id): View
     {
@@ -116,6 +132,7 @@ class AircraftController extends Controller
 
         if (empty($aircraft)) {
             Flash::error('Aircraft not found');
+
             return redirect(route('admin.aircraft.index'));
         }
 
@@ -126,10 +143,6 @@ class AircraftController extends Controller
 
     /**
      * Show the form for editing the specified Aircraft.
-     *
-     * @param int $id
-     *
-     * @return View|RedirectResponse
      */
     public function edit(int $id): View|RedirectResponse
     {
@@ -140,6 +153,7 @@ class AircraftController extends Controller
 
         if (empty($aircraft)) {
             Flash::error('Aircraft not found');
+
             return redirect(route('admin.aircraft.index'));
         }
 
@@ -164,12 +178,8 @@ class AircraftController extends Controller
     /**
      * Update the specified Aircraft in storage.
      *
-     * @param int                   $id
-     * @param UpdateAircraftRequest $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function update(int $id, UpdateAircraftRequest $request): RedirectResponse
     {
@@ -178,22 +188,26 @@ class AircraftController extends Controller
 
         if (empty($aircraft)) {
             Flash::error('Aircraft not found');
+
             return redirect(route('admin.aircraft.index'));
         }
 
         $attrs = $request->all();
+        // Set the correct mass units
+        $attrs['dow'] = (filled($attrs['dow']) && $attrs['dow'] > 0) ? Mass::make((float) $request->input('dow'), setting('units.weight')) : null;
+        $attrs['zfw'] = (filled($attrs['zfw']) && $attrs['zfw'] > 0) ? Mass::make((float) $request->input('zfw'), setting('units.weight')) : null;
+        $attrs['mtow'] = (filled($attrs['mtow']) && $attrs['mtow'] > 0) ? Mass::make((float) $request->input('mtow'), setting('units.weight')) : null;
+        $attrs['mlw'] = (filled($attrs['mlw']) && $attrs['mlw'] > 0) ? Mass::make((float) $request->input('mlw'), setting('units.weight')) : null;
+
         $this->aircraftRepo->update($attrs, $id);
 
         Flash::success('Aircraft updated successfully.');
+
         return redirect(route('admin.aircraft.index').'?subfleet='.$aircraft->subfleet_id);
     }
 
     /**
      * Remove the specified Aircraft from storage.
-     *
-     * @param int $id
-     *
-     * @return RedirectResponse
      */
     public function destroy(int $id): RedirectResponse
     {
@@ -202,6 +216,7 @@ class AircraftController extends Controller
 
         if (empty($aircraft)) {
             Flash::error('Aircraft not found');
+
             return redirect(route('admin.aircraft.index'));
         }
 
@@ -212,17 +227,15 @@ class AircraftController extends Controller
         $this->aircraftRepo->delete($id);
 
         Flash::success('Aircraft deleted successfully.');
+
         return redirect(route('admin.aircraft.index'));
     }
 
     /**
      * Run the aircraft exporter
      *
-     * @param Request $request
      *
      * @throws \League\Csv\Exception
-     *
-     * @return BinaryFileResponse
      */
     public function export(Request $request): BinaryFileResponse
     {
@@ -239,14 +252,10 @@ class AircraftController extends Controller
         $aircraft = $this->aircraftRepo->where($where)->orderBy('registration')->get();
 
         $path = $exporter->exportAircraft($aircraft);
+
         return response()->download($path, $file_name, ['content-type' => 'text/csv'])->deleteFileAfterSend(true);
     }
 
-    /**
-     * @param Request $request
-     *
-     * @return View
-     */
     public function import(Request $request): View
     {
         $logs = [
@@ -263,11 +272,6 @@ class AircraftController extends Controller
         ]);
     }
 
-    /**
-     * @param Aircraft $aircraft
-     *
-     * @return View
-     */
     protected function return_expenses_view(Aircraft $aircraft): View
     {
         $aircraft->refresh();
@@ -280,16 +284,13 @@ class AircraftController extends Controller
     /**
      * Operations for associating ranks to the subfleet
      *
-     * @param int     $id
-     * @param Request $request
      *
      * @throws Exception
-     *
-     * @return View
      */
     public function expenses(int $id, Request $request): View
     {
-        $aircraft = $this->aircraftRepo->findWithoutFail($id);
+        /** @var Aircraft $aircraft */
+        $aircraft = $this->aircraftRepo->with('airline')->findWithoutFail($id);
         if (empty($aircraft)) {
             return $this->return_expenses_view($aircraft);
         }
@@ -299,10 +300,11 @@ class AircraftController extends Controller
         }
 
         if ($request->isMethod('post')) {
-            $expense = new Expense($request->post());
-            $expense->ref_model = Aircraft::class;
-            $expense->ref_model_id = $aircraft->id;
-            $expense->save();
+            $this->financeSvc->addExpense(
+                $request->post(),
+                $aircraft,
+                $aircraft->airline->id
+            );
         } elseif ($request->isMethod('put')) {
             $expense = Expense::findOrFail($request->input('expense_id'));
             $expense->{$request->name} = $request->value;

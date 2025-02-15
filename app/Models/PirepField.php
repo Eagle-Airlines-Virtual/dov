@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Contracts\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * @property string name
@@ -11,7 +13,10 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
  */
 class PirepField extends Model
 {
+    use LogsActivity;
+
     public $table = 'pirep_fields';
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -19,6 +24,7 @@ class PirepField extends Model
         'slug',
         'description',
         'required',
+        'pirep_source',
     ];
 
     protected $casts = [
@@ -32,8 +38,6 @@ class PirepField extends Model
 
     /**
      * When setting the name attribute, also set the slug
-     *
-     * @return Attribute
      */
     public function name(): Attribute
     {
@@ -43,5 +47,13 @@ class PirepField extends Model
                 'slug' => str_slug($name),
             ]
         );
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }

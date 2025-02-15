@@ -1,7 +1,7 @@
 - key: general.theme
   name: 'Current Theme'
   group: general
-  value: 'default'
+  value: 'seven'
   options: ''
   type: select
   description: 'The currently active theme'
@@ -61,6 +61,27 @@
   options: ''
   type: boolean
   description: Record the user's IP address on register/login
+- key: general.invite_only_registrations
+  name: 'Invite Only Registrations'
+  group: general
+  value: false
+  options: ''
+  type: boolean
+  description: If checked, only users with an invite can register
+- key: general.disable_registrations
+  name: 'Disable registrations'
+  group: general
+  value: false
+  options: ''
+  type: boolean
+  description: If checked, registrations will be disabled and only admins can add pilots
+- key: general.auto_language_detection
+  name: 'Auto language detection'
+  group: general
+  value: false
+  options: ''
+  type: boolean
+  description: If checked, the app's language will be inferred from the browser's preferences
 - key: captcha.enabled
   name: 'hCaptcha Enabled'
   group: captcha
@@ -213,7 +234,7 @@
   value: true
   options: ''
   type: boolean
-  description: 'When enabled, an aircraft can only be used for one active Bid and Flight/Pirep' 
+  description: 'When enabled, an aircraft can only be used for one active Bid and Flight/Pirep'
 - key: bids.expire_time
   name: 'Expire Time'
   group: bids
@@ -235,6 +256,34 @@
   options: ''
   type: number
   description: 'How much the load factor can vary per-flight'
+- key: flights.use_cargo_load_factor
+  name: 'Different Cargo Load Factor'
+  group: flights
+  value: false
+  options: ''
+  type: boolean
+  description: 'When enabled these values will be used for cargo fares'
+- key: flights.default_cargo_load_factor
+  name: 'Cargo Load Factor'
+  group: flights
+  value: 32
+  options: ''
+  type: number
+  description: 'The default cargo load factor for a flight, as a percent'
+- key: flights.cargo_load_factor_variance
+  name: 'Cargo Load Factor Variance'
+  group: flights
+  value: 5
+  options: ''
+  type: number
+  description: 'How much the cargo load factor can vary per-flight'
+- key: flights.only_company_aircraft
+  name: 'Allow Only Company Aircraft'
+  group: flights
+  value: false
+  options: ''
+  type: boolean
+  description: 'If no subfleets are assigned to a flight, only company aircraft will be used'
 - key: simbrief.api_key
   name: 'Simbrief API Key'
   group: simbrief
@@ -305,6 +354,20 @@
   options: ''
   type: boolean
   description: 'When enabled, an aircraft can only be used for one active SimBrief OFP and Flight/Pirep'
+- key: simbrief.use_standard_weights
+  name: 'Use Only phpVMS Weights'
+  group: simbrief
+  value: false
+  options: ''
+  type: boolean
+  description: 'When enabled, only phpVMS Passenger and Baggage weights will be used (instead of Airframe definitions)'
+- key: simbrief.use_custom_airframes
+  name: 'Use Only Custom Airframes'
+  group: simbrief
+  value: false
+  options: ''
+  type: boolean
+  description: 'When enabled, only phpVMS Airframes will be listed for flight planning (instead of combined list)'
 - key: pireps.duplicate_check_time
   name: 'PIREP duplicate time check'
   group: pireps
@@ -354,6 +417,13 @@
   options: ''
   type: int
   description: 'The time in hours to delete a rejected PIREP'
+- key: pireps.handle_diversion
+  name: 'Handle pirep diversion'
+  group: pireps
+  value: true
+  options: ''
+  type: boolean
+  description: 'Auto Handle Diversions (move assets and create re position flight)'
 - key: pilots.id_length
   name: 'Pilot ID Length'
   group: pilots
@@ -493,3 +563,17 @@
   options: ''
   type: boolean
   description: Send out a discord notification when a user's rank is changed
+- key: notifications.discord_pirep_diverted
+  name: Discord Pirep Diverted (Public)
+  group: notifications
+  value: true
+  options: ''
+  type: boolean
+  description: Send out a discord notification when a pirep is diverted
+- key: notifications.discord_pirep_filed
+  name: Discord Pirep Filed Message (Public)
+  group: notifications
+  value: true
+  options: ''
+  type: boolean
+  description: Send out a discord notification when a pirep is filed

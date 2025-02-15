@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Contracts\Controller;
+use App\Models\Aircraft;
 use App\Models\Bid;
 use App\Models\Enums\FlightType;
 use App\Models\Flight;
+use App\Models\Typerating;
 use App\Repositories\AirlineRepository;
 use App\Repositories\AirportRepository;
 use App\Repositories\Criteria\WhereCriteria;
 use App\Repositories\FlightRepository;
 use App\Repositories\SubfleetRepository;
 use App\Repositories\UserRepository;
+use App\Services\FlightService;
 use App\Services\GeoService;
 use App\Services\ModuleService;
 use App\Services\UserService;
@@ -26,34 +29,20 @@ use Prettus\Repository\Exceptions\RepositoryException;
 
 class FlightController extends Controller
 {
-    /**
-     * @param AirlineRepository  $airlineRepo
-     * @param AirportRepository  $airportRepo
-     * @param FlightRepository   $flightRepo
-     * @param GeoService         $geoSvc
-     * @param ModuleService      $moduleSvc
-     * @param SubfleetRepository $subfleetRepo
-     * @param UserRepository     $userRepo
-     * @param UserService        $userSvc
-     */
     public function __construct(
         private readonly AirlineRepository $airlineRepo,
         private readonly AirportRepository $airportRepo,
         private readonly FlightRepository $flightRepo,
+        private readonly FlightService $flightSvc,
         private readonly GeoService $geoSvc,
         private readonly ModuleService $moduleSvc,
         private readonly SubfleetRepository $subfleetRepo,
         private readonly UserRepository $userRepo,
         private readonly UserService $userSvc
-    ) {
-    }
+    ) {}
 
     /**
-     * @param Request $request
-     *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
-     *
-     * @return View
      */
     public function index(Request $request): View
     {
@@ -63,11 +52,8 @@ class FlightController extends Controller
     /**
      * Make a search request using the Repository search
      *
-     * @param Request $request
      *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
-     *
-     * @return View
      */
     public function search(Request $request): View
     {
@@ -78,7 +64,7 @@ class FlightController extends Controller
 
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $user->loadMissing('current_airport');
+        $user->loadMissing(['current_airport', 'typeratings']);
 
         if (setting('pilots.restrict_to_company')) {
             $where['airline_id'] = $user->airline_id;
@@ -109,14 +95,25 @@ class FlightController extends Controller
             // Get allowed subfleets for the user
             $user_subfleets = $this->userSvc->getAllowableSubfleets($user)->pluck('id')->toArray();
             // Get flight_id's from relationships (group by flight id to reduce the array size)
-            $allowed_flights = DB::table('flight_subfleet')
-            ->select('flight_id')
-            ->whereIn('subfleet_id', $user_subfleets)
+            $user_flights = DB::table('flight_subfleet')
+                ->select('flight_id')
+                ->whereIn('subfleet_id', $user_subfleets)
                 ->groupBy('flight_id')
                 ->pluck('flight_id')
                 ->toArray();
+            // Get flight_id's of open (non restricted) flights
+            $open_flights = Flight::withCount('subfleets')->whereNull('user_id')->having('subfleets_count', 0)->pluck('id')->toArray();
+            $allowed_flights = array_merge($user_flights, $open_flights);
+            // Build aircraft icao codes by considering allowed subfleets
+            $icao_codes = Aircraft::whereIn('subfleet_id', $user_subfleets)->groupBy('icao')->orderBy('icao')->pluck('icao')->toArray();
+            // Build type ratings collection by considering user's capabilities
+            $type_ratings = $user->typeratings;
         } else {
             $allowed_flights = [];
+            // Build aircraft icao codes array from complete fleet
+            $icao_codes = Aircraft::groupBy('icao')->orderBy('icao')->pluck('icao')->toArray();
+            // Build type ratings collection from all active ratings
+            $type_ratings = Typerating::where('active', 1)->select('id', 'name', 'type')->orderBy('type')->get();
         }
 
         // Get only used Flight Types for the search form
@@ -147,7 +144,7 @@ class FlightController extends Controller
             ->when($filter_by_user, function ($query) use ($allowed_flights) {
                 return $query->whereIn('id', $allowed_flights);
             })
-            ->sortable('flight_number', 'route_code', 'route_leg')
+            ->sortable('flight_number')->orderBy('route_code')->orderBy('route_leg')
             ->paginate();
 
         $saved_flights = [];
@@ -155,6 +152,7 @@ class FlightController extends Controller
         foreach ($bids as $bid) {
             if (!$bid->flight) {
                 $bid->delete();
+
                 continue;
             }
 
@@ -177,15 +175,13 @@ class FlightController extends Controller
             'simbrief'      => !empty(setting('simbrief.api_key')),
             'simbrief_bids' => setting('simbrief.only_bids'),
             'acars_plugin'  => $this->moduleSvc->isModuleActive('VMSAcars'),
+            'icao_codes'    => $icao_codes,
+            'type_ratings'  => $type_ratings,
         ]);
     }
 
     /**
      * Find the user's bids and display them
-     *
-     * @param Request $request
-     *
-     * @return View
      */
     public function bids(Request $request): View
     {
@@ -199,6 +195,7 @@ class FlightController extends Controller
             // Remove any invalid bids (flight doesn't exist or something)
             if (!$bid->flight) {
                 $bid->delete();
+
                 continue;
             }
 
@@ -222,13 +219,12 @@ class FlightController extends Controller
     /**
      * Show the flight information page
      *
-     * @param string $id
      *
      * @return mixed
      */
     public function show(string $id): View
     {
-        $user_id = Auth::id();
+        $user = Auth::user();
         // Support retrieval of deleted relationships
         $with_flight = [
             'airline' => function ($query) {
@@ -244,21 +240,26 @@ class FlightController extends Controller
                 return $query->withTrashed();
             },
             'subfleets.airline',
-            'simbrief' => function ($query) use ($user_id) {
-                $query->where('user_id', $user_id);
+            'simbrief' => function ($query) use ($user) {
+                $query->where('user_id', $user->id);
             },
         ];
 
         $flight = $this->flightRepo->with($with_flight)->find($id);
         if (empty($flight)) {
             Flash::error('Flight not found!');
+
             return redirect(route('frontend.dashboard.index'));
+        }
+
+        if (setting('flights.only_company_aircraft', false)) {
+            $flight = $this->flightSvc->filterSubfleets($user, $flight);
         }
 
         $map_features = $this->geoSvc->flightGeoJson($flight);
 
         // See if the user has a bid for this flight
-        $bid = Bid::where(['user_id' => $user_id, 'flight_id' => $flight->id])->first();
+        $bid = Bid::where(['user_id' => $user->id, 'flight_id' => $flight->id])->first();
 
         return view('flights.show', [
             'flight'       => $flight,

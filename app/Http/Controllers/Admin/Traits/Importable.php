@@ -19,8 +19,6 @@ trait Importable
      * @param int     $importType Refer to \App\Models\Enums\ImportExportType
      *
      * @throws \Illuminate\Validation\ValidationException
-     *
-     * @return mixed
      */
     public function importFile(Request $request, int $importType): mixed
     {
@@ -38,6 +36,10 @@ trait Importable
         Log::info('Uploaded airport import file to '.$path);
 
         $delete_previous = get_truth_state($request->get('delete'));
+
+        if ($importType === ImportExportType::FLIGHTS) {
+            $delete_previous = $request->get('delete');
+        }
 
         switch ($importType) {
             case ImportExportType::AIRCRAFT:

@@ -10,14 +10,8 @@ class Version extends Command
 {
     protected $signature = 'phpvms:version {--write} {--base-only} {--write-full-version} {version?}';
 
-    /**
-     * @var VersionService
-     */
     private VersionService $versionSvc;
 
-    /**
-     * @param VersionService $versionSvc
-     */
     public function __construct(VersionService $versionSvc)
     {
         parent::__construct();
@@ -39,7 +33,7 @@ class Version extends Command
 
             // If a version is being passed in, the update the build, etc data against this
             if ($this->argument('version')) {
-                $version = \SemVer\SemVer\Version::fromString($this->argument('version'));
+                $version = \Version\Version::fromString($this->argument('version'));
                 if ($this->option('write-full-version')) {
                     $cfg['current']['major'] = $version->getMajor();
                     $cfg['current']['minor'] = $version->getMinor();
@@ -47,21 +41,22 @@ class Version extends Command
                 }
 
                 $prerelease = $version->getPreRelease();
-                if (strpos($prerelease, '.') !== false) {
-                    $prerelease = explode('.', $prerelease);
-                    $cfg['current']['prerelease'] = $prerelease[0];
-                    $cfg['current']['buildmetadata'] = $prerelease[1];
+                if (!empty($prerelease)) {
+                    $cfg['current']['prerelease'] = $prerelease->toString();
                 } else {
-                    $cfg['current']['prerelease'] = $prerelease;
+                    $cfg['current']['prerelease'] = false;
                 }
+
+                $build_meta = $version->getBuild();
+                if (!empty($build_meta)) {
+                    $cfg['current']['buildmetadata'] = $build_meta->toString();
+                } else {
+                    $build_number = $this->versionSvc->generateBuildId($cfg);
+                    $cfg['current']['buildmetadata'] = $build_number;
+                }
+
+                file_put_contents($version_file, Yaml::dump($cfg, 4, 2));
             }
-
-            // Always write out the build ID/build number which is the commit hash
-            $build_number = $this->versionSvc->generateBuildId($cfg);
-            $cfg['current']['commit'] = $build_number;
-            $cfg['build']['number'] = $build_number;
-
-            file_put_contents($version_file, Yaml::dump($cfg, 4, 2));
         }
 
         $incl_build = empty($this->option('base-only')) ? true : false;

@@ -8,6 +8,7 @@ use App\Http\Requests\CreateFareRequest;
 use App\Http\Requests\UpdateFareRequest;
 use App\Models\Enums\FareType;
 use App\Models\Enums\ImportExportType;
+use App\Models\Fare;
 use App\Repositories\FareRepository;
 use App\Services\ExportService;
 use App\Services\ImportService;
@@ -25,32 +26,48 @@ class FareController extends Controller
 
     /**
      * FareController constructor.
-     *
-     * @param FareRepository $fareRepo
-     * @param ImportService  $importSvc
      */
     public function __construct(
         private readonly FareRepository $fareRepo,
         private readonly ImportService $importSvc
-    ) {
-    }
+    ) {}
 
     /**
      * Display a listing of the Fare.
      *
-     * @param Request $request
      *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
-     *
-     * @return View
      */
     public function index(Request $request): View
     {
         $this->fareRepo->pushCriteria(new RequestCriteria($request));
         $fares = $this->fareRepo->all();
+        $trashed = $this->fareRepo->onlyTrashed()->orderBy('deleted_at', 'desc')->get();
 
-        return view('admin.fares.index')
-            ->with('fares', $fares);
+        return view('admin.fares.index', [
+            'fares'   => $fares,
+            'trashed' => $trashed,
+        ]);
+    }
+
+    /**
+     * Recycle Bin operations, either restore or permanently delete the object
+     */
+    public function trashbin(Request $request)
+    {
+        $object_id = (isset($request->object_id)) ? $request->object_id : null;
+
+        if ($object_id && $request->action === 'restore') {
+            Fare::onlyTrashed()->where('id', $object_id)->restore();
+            Flash::success('Fare RESTORED successfully.');
+        } elseif ($object_id && $request->action === 'delete') {
+            Fare::onlyTrashed()->where('id', $object_id)->forceDelete();
+            Flash::error('Fare DELETED PERMANENTLY.');
+        } else {
+            Flash::info('Nothing done!');
+        }
+
+        return back();
     }
 
     /**
@@ -66,11 +83,8 @@ class FareController extends Controller
     /**
      * Store a newly created Fare in storage.
      *
-     * @param CreateFareRequest $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function store(CreateFareRequest $request): RedirectResponse
     {
@@ -78,21 +92,19 @@ class FareController extends Controller
         $fare = $this->fareRepo->create($input);
 
         Flash::success('Fare saved successfully.');
+
         return redirect(route('admin.fares.index'));
     }
 
     /**
      * Display the specified Fare.
-     *
-     * @param int $id
-     *
-     * @return RedirectResponse|View
      */
     public function show(int $id): RedirectResponse|View
     {
         $fare = $this->fareRepo->findWithoutFail($id);
         if (empty($fare)) {
             Flash::error('Fare not found');
+
             return redirect(route('admin.fares.index'));
         }
 
@@ -103,16 +115,13 @@ class FareController extends Controller
 
     /**
      * Show the form for editing the specified Fare.
-     *
-     * @param int $id
-     *
-     * @return RedirectResponse|View
      */
     public function edit(int $id): RedirectResponse|View
     {
         $fare = $this->fareRepo->findWithoutFail($id);
         if (empty($fare)) {
             Flash::error('Fare not found');
+
             return redirect(route('admin.fares.index'));
         }
 
@@ -125,31 +134,28 @@ class FareController extends Controller
     /**
      * Update the specified Fare in storage.
      *
-     * @param int               $id
-     * @param UpdateFareRequest $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function update(int $id, UpdateFareRequest $request): RedirectResponse
     {
         $fare = $this->fareRepo->findWithoutFail($id);
         if (empty($fare)) {
             Flash::error('Fare not found');
+
             return redirect(route('admin.fares.index'));
         }
 
         $fare = $this->fareRepo->update($request->all(), $id);
 
         Flash::success('Fare updated successfully.');
+
         return redirect(route('admin.fares.index'));
     }
 
     /**
      * Remove the specified Fare from storage.
      *
-     * @param int $id
      *
      * @return mixed
      */
@@ -158,6 +164,7 @@ class FareController extends Controller
         $fare = $this->fareRepo->findWithoutFail($id);
         if (empty($fare)) {
             Flash::error('Fare not found');
+
             return redirect(route('admin.fares.index'));
         }
 
@@ -166,17 +173,15 @@ class FareController extends Controller
         $this->fareRepo->delete($id);
 
         Flash::success('Fare deleted successfully.');
+
         return redirect(route('admin.fares.index'));
     }
 
     /**
      * Run the aircraft exporter
      *
-     * @param Request $request
      *
      * @throws \League\Csv\Exception
-     *
-     * @return BinaryFileResponse
      */
     public function export(Request $request): BinaryFileResponse
     {
@@ -184,6 +189,7 @@ class FareController extends Controller
         $fares = $this->fareRepo->all();
 
         $path = $exporter->exportFares($fares);
+
         return response()
             ->download($path, 'fares.csv', [
                 'content-type' => 'text/csv',
@@ -192,11 +198,7 @@ class FareController extends Controller
     }
 
     /**
-     * @param Request $request
-     *
      * @throws \Illuminate\Validation\ValidationException
-     *
-     * @return View
      */
     public function import(Request $request): View
     {

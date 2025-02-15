@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Contracts\Model;
 use App\Models\Casts\FuelCast;
+use App\Models\Casts\MassCast;
 use App\Models\Enums\AircraftStatus;
 use App\Models\Traits\ExpensableTrait;
 use App\Models\Traits\FilesTrait;
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Kyslik\ColumnSortable\Sortable;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Znck\Eloquent\Relations\BelongsToThrough as ZnckBelongsToThrough;
 use Znck\Eloquent\Traits\BelongsToThrough;
 
@@ -29,17 +32,23 @@ use Znck\Eloquent\Traits\BelongsToThrough;
  * @property string   registration
  * @property string   fin
  * @property int      flight_time
- * @property float    mtow
- * @property float    zfw
+ * @property Mass     dow
+ * @property Mass     mlw
+ * @property Mass     mtow
+ * @property Mass     zfw
  * @property string   hex_code
+ * @property string   selcal
  * @property Airport  airport
  * @property Airport  hub
  * @property Airport  home
+ * @property Airline  airline
  * @property Subfleet subfleet
  * @property int      status
  * @property int      state
+ * @property string   simbrief_type
  * @property Carbon   landing_time
- * @property float    fuel_onboard
+ * @property Fuel     fuel_onboard
+ * @property Bid      bid
  */
 class Aircraft extends Model
 {
@@ -47,6 +56,7 @@ class Aircraft extends Model
     use ExpensableTrait;
     use FilesTrait;
     use HasFactory;
+    use LogsActivity;
     use SoftDeletes;
     use Sortable;
 
@@ -62,12 +72,17 @@ class Aircraft extends Model
         'registration',
         'fin',
         'hex_code',
+        'selcal',
+        'landing_time',
         'flight_time',
+        'dow',
+        'mlw',
         'mtow',
         'zfw',
         'fuel_onboard',
         'status',
         'state',
+        'simbrief_type',
     ];
 
     /**
@@ -76,23 +91,29 @@ class Aircraft extends Model
     protected $casts = [
         'flight_time'  => 'float',
         'fuel_onboard' => FuelCast::class,
-        'mtow'         => 'float',
+        'dow'          => MassCast::class,
+        'mlw'          => MassCast::class,
+        'mtow'         => MassCast::class,
         'state'        => 'integer',
         'subfleet_id'  => 'integer',
-        'zfw'          => 'float',
+        'zfw'          => MassCast::class,
     ];
 
     /**
      * Validation rules
      */
     public static $rules = [
-        'fin'          => 'nullable',
-        'mtow'         => 'nullable|numeric',
-        'name'         => 'required',
-        'registration' => 'required',
-        'status'       => 'required',
-        'subfleet_id'  => 'required',
-        'zfw'          => 'nullable|numeric',
+        'name'          => 'required',
+        'registration'  => 'required',
+        'fin'           => 'nullable',
+        'selcal'        => 'nullable',
+        'status'        => 'required',
+        'subfleet_id'   => 'required',
+        'dow'           => 'nullable|numeric',
+        'zfw'           => 'nullable|numeric',
+        'mtow'          => 'nullable|numeric',
+        'mlw'           => 'nullable|numeric',
+        'simbrief_type' => 'nullable',
     ];
 
     public $sortable = [
@@ -105,17 +126,19 @@ class Aircraft extends Model
         'registration',
         'fin',
         'hex_code',
+        'selcal',
+        'landing_time',
         'flight_time',
+        'dow',
         'mtow',
+        'mlw',
         'zfw',
         'fuel_onboard',
+        'simbrief_type',
         'status',
         'state',
     ];
 
-    /**
-     * @return Attribute
-     */
     public function active(): Attribute
     {
         return Attribute::make(
@@ -123,9 +146,6 @@ class Aircraft extends Model
         );
     }
 
-    /**
-     * @return Attribute
-     */
     public function icao(): Attribute
     {
         return Attribute::make(
@@ -133,9 +153,6 @@ class Aircraft extends Model
         );
     }
 
-    /**
-     * @return Attribute
-     */
     public function ident(): Attribute
     {
         return Attribute::make(
@@ -145,8 +162,6 @@ class Aircraft extends Model
 
     /**
      * Return the landing time
-     *
-     * @return Attribute
      */
     public function landingTime(): Attribute
     {
@@ -159,6 +174,14 @@ class Aircraft extends Model
                 return $attrs['landing_time'];
             }
         );
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     /**
@@ -188,8 +211,6 @@ class Aircraft extends Model
      * Use home()
      *
      * @deprecated
-     *
-     * @return HasOne
      */
     public function hub(): HasOne
     {
@@ -209,5 +230,15 @@ class Aircraft extends Model
     public function subfleet(): BelongsTo
     {
         return $this->belongsTo(Subfleet::class, 'subfleet_id');
+    }
+
+    public function sbaircraft(): HasOne
+    {
+        return $this->hasOne(SimBriefAircraft::class, 'icao', 'icao');
+    }
+
+    public function sbairframes(): HasMany
+    {
+        return $this->hasMany(SimBriefAirframe::class, 'icao', 'icao');
     }
 }

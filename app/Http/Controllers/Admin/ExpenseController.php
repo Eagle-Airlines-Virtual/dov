@@ -11,6 +11,7 @@ use App\Models\Expense;
 use App\Repositories\AirlineRepository;
 use App\Repositories\ExpenseRepository;
 use App\Services\ExportService;
+use App\Services\FinanceService;
 use App\Services\ImportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,28 +24,18 @@ class ExpenseController extends Controller
 {
     use Importable;
 
-    /**
-     * expensesController constructor.
-     *
-     * @param AirlineRepository $airlineRepo
-     * @param ExpenseRepository $expenseRepo
-     * @param ImportService     $importSvc
-     */
     public function __construct(
         private readonly AirlineRepository $airlineRepo,
         private readonly ExpenseRepository $expenseRepo,
-        private readonly ImportService $importSvc
-    ) {
-    }
+        private readonly ImportService $importSvc,
+        private readonly FinanceService $financeSvc,
+    ) {}
 
     /**
      * Display a listing of the expenses.
      *
-     * @param Request $request
      *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
-     *
-     * @return View
      */
     public function index(Request $request): View
     {
@@ -73,17 +64,12 @@ class ExpenseController extends Controller
     /**
      * Store a newly created expenses in storage.
      *
-     * @param Request $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function store(Request $request): RedirectResponse
     {
-        $input = $request->all();
-        $input['ref_model'] = Expense::class;
-        $this->expenseRepo->create($input);
+        $this->financeSvc->addExpense($request->all(), null, null);
 
         Flash::success('Expense saved successfully.');
 
@@ -92,10 +78,6 @@ class ExpenseController extends Controller
 
     /**
      * Display the specified expenses.
-     *
-     * @param int $id
-     *
-     * @return View
      */
     public function show(int $id): View
     {
@@ -114,10 +96,6 @@ class ExpenseController extends Controller
 
     /**
      * Show the form for editing the specified expenses.
-     *
-     * @param int $id
-     *
-     * @return View
      */
     public function edit(int $id): View
     {
@@ -140,12 +118,8 @@ class ExpenseController extends Controller
     /**
      * Update the specified expenses in storage.
      *
-     * @param int     $id
-     * @param Request $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function update(int $id, Request $request): RedirectResponse
     {
@@ -153,21 +127,19 @@ class ExpenseController extends Controller
 
         if (empty($expenses)) {
             Flash::error('Expense not found');
+
             return redirect(route('admin.expenses.index'));
         }
 
         $this->expenseRepo->update($request->all(), $id);
 
         Flash::success('Expense updated successfully.');
+
         return redirect(route('admin.expenses.index'));
     }
 
     /**
      * Remove the specified expenses from storage.
-     *
-     * @param int $id
-     *
-     * @return RedirectResponse
      */
     public function destroy(int $id): RedirectResponse
     {
@@ -175,23 +147,22 @@ class ExpenseController extends Controller
 
         if (empty($expenses)) {
             Flash::error('Expense not found');
+
             return redirect(route('admin.expenses.index'));
         }
 
         $this->expenseRepo->delete($id);
 
         Flash::success('Expense deleted successfully.');
+
         return redirect(route('admin.expenses.index'));
     }
 
     /**
      * Run the airport exporter
      *
-     * @param Request $request
      *
      * @throws \League\Csv\Exception
-     *
-     * @return BinaryFileResponse
      */
     public function export(Request $request): BinaryFileResponse
     {
@@ -199,6 +170,7 @@ class ExpenseController extends Controller
         $expenses = $this->expenseRepo->all();
 
         $path = $exporter->exportExpenses($expenses);
+
         return response()
             ->download($path, 'expenses.csv', [
                 'content-type' => 'text/csv',
@@ -207,11 +179,7 @@ class ExpenseController extends Controller
     }
 
     /**
-     * @param Request $request
-     *
      * @throws \Illuminate\Validation\ValidationException
-     *
-     * @return View
      */
     public function import(Request $request): View
     {

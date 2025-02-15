@@ -27,27 +27,14 @@ use Prettus\Repository\Exceptions\RepositoryException;
 
 class UserController extends Controller
 {
-    /**
-     * @param BidService       $bidSvc
-     * @param FlightRepository $flightRepo
-     * @param PirepRepository  $pirepRepo
-     * @param UserRepository   $userRepo
-     * @param UserService      $userSvc
-     */
     public function __construct(
         private readonly BidService $bidSvc,
         private readonly FlightRepository $flightRepo,
         private readonly PirepRepository $pirepRepo,
         private readonly UserRepository $userRepo,
         private readonly UserService $userSvc
-    ) {
-    }
+    ) {}
 
-    /**
-     * @param Request $request
-     *
-     * @return mixed
-     */
     protected function getUserId(Request $request): mixed
     {
         $id = $request->get('id');
@@ -60,26 +47,22 @@ class UserController extends Controller
 
     /**
      * Return the profile for the currently auth'd user
-     *
-     * @param Request $request
-     *
-     * @return UserResource
      */
     public function index(Request $request): UserResource
     {
-        return $this->get(Auth::user()->id);
+        $with_subfleets = (!$request->has('with') || str_contains($request->input('with', ''), 'subfleets'));
+
+        return $this->get(Auth::user()->id, $with_subfleets);
     }
 
     /**
      * Get the profile for the passed-in user
      *
-     * @param int $id
-     *
-     * @return UserResource
+     * @param Request $request
      */
-    public function get(int $id): UserResource
+    public function get(int $id, bool $with_subfleets = true): UserResource
     {
-        $user = $this->userSvc->getUser($id);
+        $user = $this->userSvc->getUser($id, $with_subfleets);
         if ($user === null) {
             throw new UserNotFound();
         }
@@ -90,17 +73,16 @@ class UserController extends Controller
     /**
      * Return all of the bids for the passed-in user
      *
-     * @param Request $request
+     *
+     * @return mixed
      *
      * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
      * @throws \App\Exceptions\BidExistsForFlight
-     *
-     * @return mixed
      */
     public function bids(Request $request)
     {
         $user_id = $this->getUserId($request);
-        $user = $this->userSvc->getUser($user_id);
+        $user = $this->userSvc->getUser($user_id, false);
         if ($user === null) {
             throw new UserNotFound();
         }
@@ -130,8 +112,17 @@ class UserController extends Controller
             $this->bidSvc->removeBid($flight, $user);
         }
 
+        $relations = [
+            'subfleets',
+            'simbrief_aircraft',
+        ];
+
+        if ($request->has('with')) {
+            $relations = explode(',', $request->input('with', ''));
+        }
+
         // Return the flights they currently have bids on
-        $bids = $this->bidSvc->findBidsForUser($user);
+        $bids = $this->bidSvc->findBidsForUser($user, $relations);
 
         return BidResource::collection($bids);
     }
@@ -139,8 +130,6 @@ class UserController extends Controller
     /**
      * Get a particular bid for a user
      *
-     * @param int                      $bid_id
-     * @param \Illuminate\Http\Request $request
      *
      * @return Bid
      */
@@ -164,10 +153,6 @@ class UserController extends Controller
 
     /**
      * Return the fleet that this user is allowed to
-     *
-     * @param Request $request
-     *
-     * @return AnonymousResourceCollection
      */
     public function fleet(Request $request): AnonymousResourceCollection
     {
@@ -176,17 +161,13 @@ class UserController extends Controller
             throw new UserNotFound();
         }
 
-        $subfleets = $this->userSvc->getAllowableSubfleets($user);
+        $subfleets = $this->userSvc->getAllowableSubfleets($user, true);
 
         return SubfleetResource::collection($subfleets);
     }
 
     /**
-     * @param Request $request
-     *
      * @throws RepositoryException
-     *
-     * @return AnonymousResourceCollection
      */
     public function pireps(Request $request): AnonymousResourceCollection
     {
@@ -205,6 +186,7 @@ class UserController extends Controller
         $this->pirepRepo->pushCriteria(new WhereCriteria($request, $where));
 
         $pireps = $this->pirepRepo
+            ->with(['airline', 'dpt_airport', 'arr_airport'])
             ->orderBy('created_at', 'desc')
             ->paginate();
 

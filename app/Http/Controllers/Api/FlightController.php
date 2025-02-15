@@ -25,37 +25,21 @@ use Prettus\Repository\Exceptions\RepositoryException;
 
 class FlightController extends Controller
 {
-    /**
-     * @param FareService      $fareSvc
-     * @param FlightRepository $flightRepo
-     * @param FlightService    $flightSvc
-     * @param UserService      $userSvc
-     */
     public function __construct(
         private readonly FareService $fareSvc,
         private readonly FlightRepository $flightRepo,
         private readonly FlightService $flightSvc,
         private readonly UserService $userSvc
-    ) {
-    }
+    ) {}
 
     /**
      * Return all the flights, paginated
-     *
-     * @param Request $request
-     *
-     * @return AnonymousResourceCollection
      */
     public function index(Request $request): AnonymousResourceCollection
     {
         return $this->search($request);
     }
 
-    /**
-     * @param string $id
-     *
-     * @return FlightResource
-     */
     public function get(string $id): FlightResource
     {
         /** @var \App\Models\User $user */
@@ -65,13 +49,10 @@ class FlightController extends Controller
         $flight = $this->flightRepo->with([
             'airline',
             'fares',
-            'subfleets',
-            'subfleets.aircraft',
-            'subfleets.aircraft.bid',
-            'subfleets.fares',
+            'subfleets' => ['aircraft.bid', 'fares'],
             'field_values',
             'simbrief' => function ($query) use ($user) {
-                return $query->where('user_id', $user->id);
+                return $query->with('aircraft')->where('user_id', $user->id);
             },
         ])->find($id);
 
@@ -82,8 +63,6 @@ class FlightController extends Controller
     }
 
     /**
-     * @param Request $request
-     *
      * @return mixed
      */
     public function search(Request $request)
@@ -116,27 +95,46 @@ class FlightController extends Controller
 
             $this->flightRepo->pushCriteria(new RequestCriteria($request));
 
-            $flights = $this->flightRepo
-                ->with([
-                    'airline',
-                    'fares',
-                    'subfleets',
-                    'subfleets.aircraft',
-                    'subfleets.aircraft.bid',
-                    'subfleets.fares',
-                    'field_values',
-                    'simbrief' => function ($query) use ($user) {
-                        return $query->where('user_id', $user->id);
-                    },
-                ])
-                ->paginate();
+            $with = [
+                'airline',
+                'fares',
+                'field_values',
+                'simbrief' => function ($query) use ($user) {
+                    return $query->with('aircraft')->where('user_id', $user->id);
+                },
+            ];
+
+            $relations = [
+                'subfleets',
+            ];
+
+            if ($request->has('with')) {
+                $relations = explode(',', $request->input('with', ''));
+            }
+
+            foreach ($relations as $relation) {
+                $with = array_merge($with, match ($relation) {
+                    'subfleets' => [
+                        'subfleets',
+                        'subfleets.aircraft',
+                        'subfleets.aircraft.bid',
+                        'subfleets.fares',
+                    ],
+                    default => [],
+                });
+            }
+
+            $flights = $this->flightRepo->with($with)->paginate();
         } catch (RepositoryException $e) {
             return response($e, 503);
         }
 
         // TODO: Remove any flights here that a user doesn't have permissions to
         foreach ($flights as $flight) {
-            $this->flightSvc->filterSubfleets($user, $flight);
+            if (in_array('subfleets', $relations)) {
+                $this->flightSvc->filterSubfleets($user, $flight);
+            }
+
             $this->fareSvc->getReconciledFaresForFlight($flight);
         }
 
@@ -146,8 +144,7 @@ class FlightController extends Controller
     /**
      * Output the flight briefing from simbrief or whatever other format
      *
-     * @param string $id The flight ID
-     *
+     * @param  string                                                                  $id The flight ID
      * @return \Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Http\Response
      */
     public function briefing(string $id)
@@ -176,11 +173,6 @@ class FlightController extends Controller
 
     /**
      * Get a flight's route
-     *
-     * @param string  $id
-     * @param Request $request
-     *
-     * @return AnonymousResourceCollection
      */
     public function route(string $id, Request $request): AnonymousResourceCollection
     {
@@ -192,9 +184,6 @@ class FlightController extends Controller
 
     /**
      * Get a flight's aircrafts
-     *
-     * @param string  $id
-     * @param Request $request
      */
     public function aircraft(string $id, Request $request)
     {

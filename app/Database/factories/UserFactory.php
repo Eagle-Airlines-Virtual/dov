@@ -19,9 +19,6 @@ class UserFactory extends Factory
      */
     protected $model = User::class;
 
-    /**
-     * @var string
-     */
     private static string $password;
 
     /**
@@ -50,6 +47,7 @@ class UserFactory extends Factory
             'state'             => UserState::ACTIVE,
             'remember_token'    => $this->faker->unique()->text(5),
             'email_verified_at' => now(),
+            'avatar'            => '',
         ];
     }
 }

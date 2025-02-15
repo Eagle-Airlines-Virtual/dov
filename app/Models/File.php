@@ -53,8 +53,6 @@ class File extends Model
 
     /**
      * Return the file extension
-     *
-     * @return Attribute
      */
     public function extension(): Attribute
     {
@@ -71,8 +69,6 @@ class File extends Model
 
     /**
      * Get just the filename
-     *
-     * @return Attribute
      */
     public function filename(): Attribute
     {
@@ -89,8 +85,6 @@ class File extends Model
 
     /**
      * Get the full URL to this attribute
-     *
-     * @return Attribute
      */
     public function url(): Attribute
     {
@@ -112,6 +106,13 @@ class File extends Model
                 // Otherwise, figure out the public URL and save there
                 return public_asset(Storage::disk('public')->url($this->path));
             }
+        );
+    }
+
+    public function isExternalFile(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value, array $attrs): bool => is_null($attrs['disk']) && !str_contains($this->url, config('app.url')),
         );
     }
 }

@@ -32,16 +32,6 @@ class PirepController extends Controller
 {
     /**
      * PirepController constructor.
-     *
-     * @param AirportRepository    $airportRepo
-     * @param AirlineRepository    $airlineRepo
-     * @param AircraftRepository   $aircraftRepo
-     * @param JournalRepository    $journalRepo
-     * @param PirepRepository      $pirepRepo
-     * @param PirepFieldRepository $pirepFieldRepo
-     * @param PirepService         $pirepSvc
-     * @param SubfleetRepository   $subfleetRepo
-     * @param UserService          $userSvc
      */
     public function __construct(
         private readonly AirportRepository $airportRepo,
@@ -53,15 +43,10 @@ class PirepController extends Controller
         private readonly PirepService $pirepSvc,
         private readonly SubfleetRepository $subfleetRepo,
         private readonly UserService $userSvc
-    ) {
-    }
+    ) {}
 
     /**
      * Dropdown with aircraft grouped by subfleet
-     *
-     * @param ?User $user
-     *
-     * @return array
      */
     public function aircraftList(?User $user = null): array
     {
@@ -72,6 +57,8 @@ class PirepController extends Controller
         } else {
             $subfleets = $this->userSvc->getAllowableSubfleets($user);
         }
+
+        $subfleets->loadMissing('aircraft');
 
         foreach ($subfleets as $subfleet) {
             $tmp = [];
@@ -87,9 +74,6 @@ class PirepController extends Controller
 
     /**
      * Save any custom fields found
-     *
-     * @param Pirep   $pirep
-     * @param Request $request
      */
     protected function saveCustomFields(Pirep $pirep, Request $request): void
     {
@@ -114,8 +98,6 @@ class PirepController extends Controller
     /**
      * Save the fares that have been specified/saved
      *
-     * @param Pirep   $pirep
-     * @param Request $request
      *
      * @throws \Exception
      */
@@ -137,10 +119,6 @@ class PirepController extends Controller
 
     /**
      * Return the fares form for a given aircraft
-     *
-     * @param Request $request
-     *
-     * @return View
      */
     public function fares(Request $request): View
     {
@@ -158,11 +136,7 @@ class PirepController extends Controller
     }
 
     /**
-     * @param Request $request
-     *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
-     *
-     * @return View
      */
     public function index(Request $request): View
     {
@@ -170,12 +144,13 @@ class PirepController extends Controller
         $this->pirepRepo->pushCriteria($criterea);
 
         $pireps = $this->pirepRepo
-            ->with(['airline', 'aircraft', 'dpt_airport', 'arr_airport'])
-            ->whereNotInOrder('state', [
-                PirepState::CANCELLED,
+            ->with(['airline', 'aircraft', 'dpt_airport', 'arr_airport', 'user'])
+            ->whereNotIn('pireps.state', [
                 PirepState::DRAFT,
                 PirepState::IN_PROGRESS,
-            ], 'created_at', 'desc')
+                PirepState::CANCELLED,
+            ])
+            ->sortable(['submitted_at' => 'desc'])
             ->paginate();
 
         return view('admin.pireps.index', [
@@ -184,11 +159,7 @@ class PirepController extends Controller
     }
 
     /**
-     * @param Request $request
-     *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
-     *
-     * @return View
      */
     public function pending(Request $request): View
     {
@@ -207,8 +178,6 @@ class PirepController extends Controller
 
     /**
      * Show the form for creating a new Pirep.
-     *
-     * @return View
      */
     public function create(): View
     {
@@ -220,12 +189,8 @@ class PirepController extends Controller
     }
 
     /**
-     * @param CreatePirepRequest $request
-     *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
      * @throws \Exception
-     *
-     * @return RedirectResponse
      */
     public function store(CreatePirepRequest $request): RedirectResponse
     {
@@ -246,10 +211,6 @@ class PirepController extends Controller
 
     /**
      * Display the specified Pirep.
-     *
-     * @param string $id
-     *
-     * @return RedirectResponse|View
      */
     public function show(string $id): RedirectResponse|View
     {
@@ -257,6 +218,7 @@ class PirepController extends Controller
 
         if (empty($pirep)) {
             Flash::error('Pirep not found');
+
             return redirect(route('admin.pireps.index'));
         }
 
@@ -268,11 +230,8 @@ class PirepController extends Controller
     /**
      * Show the form for editing the specified Pirep.
      *
-     * @param string $id
      *
      * @throws \InvalidArgumentException
-     *
-     * @return RedirectResponse|View
      */
     public function edit(string $id): RedirectResponse|View
     {
@@ -282,6 +241,7 @@ class PirepController extends Controller
 
         if (empty($pirep)) {
             Flash::error('Pirep not found');
+
             return redirect(route('admin.pireps.index'));
         }
 
@@ -324,13 +284,8 @@ class PirepController extends Controller
     }
 
     /**
-     * @param string             $id
-     * @param UpdatePirepRequest $request
-     *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
      * @throws \Exception
-     *
-     * @return RedirectResponse
      */
     public function update(string $id, UpdatePirepRequest $request): RedirectResponse
     {
@@ -338,6 +293,7 @@ class PirepController extends Controller
 
         if (empty($pirep)) {
             Flash::error('Pirep not found');
+
             return redirect(route('admin.pireps.index'));
         }
 
@@ -363,15 +319,12 @@ class PirepController extends Controller
         $this->saveFares($pirep, $request);
 
         Flash::success('Pirep updated successfully.');
+
         return redirect(route('admin.pireps.index'));
     }
 
     /**
      * Remove the specified Pirep from storage.
-     *
-     * @param string $id
-     *
-     * @return RedirectResponse
      */
     public function destroy(string $id): RedirectResponse
     {
@@ -379,21 +332,19 @@ class PirepController extends Controller
 
         if (empty($pirep)) {
             Flash::error('Pirep not found');
+
             return redirect(route('admin.pireps.index'));
         }
 
         $this->pirepSvc->delete($pirep);
 
         Flash::success('Pirep deleted successfully.');
+
         return redirect()->back();
     }
 
     /**
      * Change or update the PIREP status. Just return the new actionbar
-     *
-     * @param Request $request
-     *
-     * @return View
      */
     public function status(Request $request): View
     {
@@ -413,12 +364,8 @@ class PirepController extends Controller
     /**
      * Add a comment to the Pirep
      *
-     * @param string  $id
-     * @param Request $request
      *
      * @throws \Exception
-     *
-     * @return View
      */
     public function comments(string $id, Request $request): View
     {

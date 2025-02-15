@@ -5,7 +5,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 // Adds deleted_at fields to tables with SoftDelete trait
-return new class() extends Migration {
+return new class() extends Migration
+{
     public function up()
     {
         // Aircraft
@@ -29,9 +30,11 @@ return new class() extends Migration {
         });
 
         // Fare
-        Schema::table('fares', function (Blueprint $table) {
-            $table->softDeletes();
-        });
+        if (!Schema::hasColumn('fares', 'deleted_at')) {
+            Schema::table('fares', function (Blueprint $table) {
+                $table->softDeletes();
+            });
+        }
 
         // Flight
         Schema::table('flights', function (Blueprint $table) {

@@ -2,8 +2,10 @@
 
 use App\Contracts\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 
-return new class() extends Migration {
+return new class() extends Migration
+{
     public function up()
     {
         Schema::create('ranks', function (Blueprint $table) {
@@ -22,6 +24,14 @@ return new class() extends Migration {
 
             $table->unique('name');
         });
+
+        DB::table('ranks')->insert([
+            'id'                   => 1,
+            'name'                 => 'New Pilot',
+            'hours'                => 0,
+            'acars_base_pay_rate'  => 50,
+            'manual_base_pay_rate' => 25,
+        ]);
     }
 
     public function down()

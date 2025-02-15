@@ -14,9 +14,6 @@ use Illuminate\Support\Facades\Log;
  */
 class SetActiveFlights extends Listener
 {
-    /**
-     * @param CronNightly $event
-     */
     public function handle(CronNightly $event): void
     {
         Log::info('Nightly: Setting active flights');
@@ -34,7 +31,7 @@ class SetActiveFlights extends Listener
     public function checkFlights(): void
     {
         $today = Carbon::now('UTC');
-        $flights = Flight::all();
+        $flights = Flight::where('active', 1)->whereNull('owner_type')->get();
 
         /**
          * @var Flight $flight
@@ -43,8 +40,7 @@ class SetActiveFlights extends Listener
             if (!$flight->active) {
                 continue;
             }
-
-            // Set to visible by default
+            // Set visible default
             $flight->visible = true;
 
             // dates aren't set, so just save if there were any changes above
@@ -52,13 +48,14 @@ class SetActiveFlights extends Listener
             if ($flight->start_date === null || $flight->end_date === null) {
                 if ($flight->days !== null && $flight->days > 0) {
                     $flight->visible = Days::isToday($flight->days);
-                    if (!$flight->visible) {
+                    /* if (!$flight->visible) {
                         Log::info('Today='.date('N').', start=no, mask='.$flight->days.', in='
                             .Days::in($flight->days, Days::$isoDayMap[(int) date('N')]));
-                    }
+                    } */
                 }
 
                 $flight->save();
+
                 continue;
             }
 
@@ -69,10 +66,10 @@ class SetActiveFlights extends Listener
             if ($today->gte($flight->start_date) && $today->lte($flight->end_date)) {
                 if ($flight->days !== null && $flight->days > 0) {
                     $flight->visible = Days::isToday($flight->days);
-                    if (!$flight->visible) {
+                    /*if (!$flight->visible) {
                         Log::info('Today='.date('N').', start=no, mask='.$flight->days.', in='
                                 .Days::in($flight->days, Days::$isoDayMap[(int) date('N')]));
-                    }
+                    }*/
                 }
             } else {
                 $flight->visible = false;

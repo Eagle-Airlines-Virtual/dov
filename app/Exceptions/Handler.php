@@ -28,8 +28,8 @@ class Handler extends ExceptionHandler
      * A list of the exception types that should not be reported.
      */
     protected $dontReport = [
-        //AuthenticationException::class,
-        //AuthorizationException::class,
+        // AuthenticationException::class,
+        // AuthorizationException::class,
         AbstractHttpException::class,
         IlluminateValidationException::class,
         ModelNotFoundException::class,
@@ -40,9 +40,7 @@ class Handler extends ExceptionHandler
     /**
      * Render an exception into an HTTP response.
      *
-     * @param Request    $request
-     * @param \Throwable $exception
-     *
+     * @param  Request $request
      * @return mixed
      */
     public function render($request, Throwable $exception)
@@ -62,14 +60,12 @@ class Handler extends ExceptionHandler
     /**
      * Handle errors in the API
      *
-     * @param            $request
-     * @param \Throwable $exception
      *
      * @return \Illuminate\Http\JsonResponse|\Illuminate\Http\Response
      */
     private function handleApiError($request, Throwable $exception)
     {
-        Log::error('API Error', $exception->getTrace());
+        Log::error('API Error: '.$exception->getMessage(), $exception->getTrace());
 
         if ($exception instanceof AbstractHttpException) {
             return $exception->getResponse();
@@ -107,9 +103,7 @@ class Handler extends ExceptionHandler
     /**
      * Convert an authentication exception into an unauthenticated response.
      *
-     * @param Request                 $request
-     * @param AuthenticationException $exception
-     *
+     * @param  Request                   $request
      * @return \Illuminate\Http\Response
      */
     protected function unauthenticated($request, AuthenticationException $exception)

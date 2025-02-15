@@ -5,8 +5,11 @@ namespace Tests;
 use App\Contracts\Factory;
 use App\Contracts\Unit;
 use App\Exceptions\Handler;
+use App\Models\User;
 use App\Repositories\SettingRepository;
 use App\Services\DatabaseService;
+use App\Services\Installer\SeederService;
+use App\Services\ModuleService;
 use Carbon\Carbon;
 use DateTimeImmutable;
 use Exception;
@@ -20,6 +23,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
+use Nwidart\Modules\Facades\Module;
 use ReflectionClass;
 
 /**
@@ -27,29 +31,33 @@ use ReflectionClass;
  */
 abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
 {
-    use TestData;
     use CreatesApplication;
+    use TestData;
 
     /**
      * The base URL to use while testing the application.
      */
-    public static $prefix = '/api';
+    public static string $prefix = '/api';
 
     protected $app;
-    protected $baseUrl = 'http://localhost';
-    protected $connectionsToTransact = ['test'];
 
-    /** @var \App\Models\User */
+    protected string $baseUrl = 'http://localhost';
+
+    protected array $connectionsToTransact = ['test'];
+
+    /** @var User */
     protected $user;
 
-    protected static $auth_headers = [
+    protected static array $auth_headers = [
         'x-api-key' => 'testadminapikey',
     ];
+
+    private Client $client;
 
     /**
      * @throws Exception
      */
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -60,6 +68,18 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
 
         Artisan::call('database:create', ['--reset' => true]);
         Artisan::call('migrate', ['--env' => 'testing', '--force' => true]);
+
+        app(SeederService::class)->syncAllSeeds();
+
+        /** @var ModuleService $moduleSvc */
+        $moduleSvc = app(ModuleService::class);
+        $modules = Module::all();
+
+        // Call migrate on all modules
+        /** @var \Nwidart\Modules\Module[] $modules */
+        foreach ($modules as $module) {
+            $moduleSvc->addModule($module->getName());
+        }
 
         Notification::fake();
         // $this->disableExceptionHandling();
@@ -73,13 +93,12 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
      * https://stackoverflow.com/a/41945739
      * https://gist.github.com/adamwathan/c9752f61102dc056d157
      */
-    protected function disableExceptionHandling()
+    protected function disableExceptionHandling(): void
     {
-        $this->app->instance(ExceptionHandler::class, new class() extends Handler {
+        $this->app->instance(ExceptionHandler::class, new class() extends Handler
+        {
             /** @noinspection PhpMissingParentConstructorInspection */
-            public function __construct()
-            {
-            }
+            public function __construct() {}
 
             public function report(\Throwable $e)
             {
@@ -93,26 +112,18 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
         });
     }
 
-    /**
-     * @param $mocks
-     */
-    protected function addMocks($mocks)
+    protected function addMocks(?callable $mocks): void
     {
         $handler = HandlerStack::create($mocks);
         $client = new Client(['handler' => $handler]);
         $this->client->httpClient = $client;
     }
 
-    /**
-     * @param       $user
-     * @param array $headers
-     *
-     * @return array
-     */
-    public function headers($user = null, array $headers = []): array
+    public function headers(?User $user = null, array $headers = []): array
     {
         if ($user !== null) {
             $headers['x-api-key'] = $user->api_key;
+
             return $headers;
         }
 
@@ -125,10 +136,8 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
 
     /**
      * Import data from a YML file
-     *
-     * @param $file
      */
-    public function addData($file)
+    public function addData(string $file): void
     {
         $svc = app(DatabaseService::class);
         $file_path = base_path('tests/data/'.$file.'.yml');
@@ -141,11 +150,8 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
 
     /**
      * Make sure an object has the list of keys
-     *
-     * @param       $obj
-     * @param array $keys
      */
-    public function assertHasKeys($obj, array $keys = []): void
+    public function assertHasKeys(array $obj, array $keys = []): void
     {
         foreach ($keys as $key) {
             $this->assertArrayHasKey($key, $obj);
@@ -155,11 +161,10 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
     /**
      * Read a file from the data directory
      *
-     * @param $filename
      *
      * @return false|string
      */
-    public function readDataFile($filename)
+    public function readDataFile(string $filename): bool|string
     {
         $paths = [
             'data/'.$filename,
@@ -177,10 +182,8 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
 
     /**
      * Return a mock Guzzle Client with a response loaded from $mockFile
-     *
-     * @param array|string $files
      */
-    public function mockGuzzleClient($files): void
+    public function mockGuzzleClient(array|string $files): void
     {
         if (!is_array($files)) {
             $files = [$files];
@@ -203,7 +206,7 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
     /**
      * @param array|string $files The filename or files to respond with
      */
-    public function mockXmlResponse($files)
+    public function mockXmlResponse(array|string $files): void
     {
         if (!is_array($files)) {
             $files = [$files];
@@ -224,12 +227,32 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
     }
 
     /**
-     * Update a setting
-     *
-     * @param $key
-     * @param $value
+     * @param array|string $files The filename or files to respond with
      */
-    public function updateSetting($key, $value)
+    public function mockPlainTextResponse(array|string $files): void
+    {
+        if (!is_array($files)) {
+            $files = [$files];
+        }
+
+        $responses = [];
+        foreach ($files as $file) {
+            $responses[] = new Response(200, [
+                'Content-Type' => 'text/plain',
+            ], trim($this->readDataFile($file)));
+        }
+
+        $mock = new MockHandler($responses);
+
+        $handler = HandlerStack::create($mock);
+        $guzzleClient = new Client(['handler' => $handler]);
+        app()->instance(Client::class, $guzzleClient);
+    }
+
+    /**
+     * Update a setting
+     */
+    public function updateSetting(string $key, string $value): void
     {
         $settingsRepo = app(SettingRepository::class);
         $settingsRepo->store($key, $value);
@@ -239,15 +262,10 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
      * So we can test private/protected methods
      * http://bit.ly/1mr5hMq
      *
-     * @param       $object
-     * @param       $methodName
-     * @param array $parameters
      *
      * @throws \ReflectionException
-     *
-     * @return mixed
      */
-    public function invokeMethod(&$object, $methodName, array $parameters = [])
+    public function invokeMethod(&$object, string $methodName, array $parameters = []): mixed
     {
         $reflection = new ReflectionClass(get_class($object));
         $method = $reflection->getMethod($methodName);
@@ -259,12 +277,8 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
     /**
      * Transform any data that's passed in. E.g, make sure that any mutator
      * classes (e.g, units) are not passed in as the mutator class
-     *
-     * @param array $data
-     *
-     * @return array
      */
-    protected function transformData(&$data)
+    protected function transformData(array &$data): array
     {
         foreach ($data as $key => &$value) {
             if (is_array($value)) {
@@ -291,10 +305,7 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
      * Override the GET call to inject the user API key
      *
      * @param string $uri
-     * @param array  $headers
      * @param null   $user
-     *
-     * @return \Illuminate\Testing\TestResponse
      */
     public function get($uri, array $headers = [], $user = null): TestResponse
     {
@@ -310,11 +321,7 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
      * Override the POST calls to inject the user API key
      *
      * @param string $uri
-     * @param array  $data
-     * @param array  $headers
      * @param null   $user
-     *
-     * @return TestResponse
      */
     public function post($uri, array $data = [], array $headers = [], $user = null): TestResponse
     {
@@ -331,11 +338,7 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
      * Override the PUT calls to inject the user API key
      *
      * @param string $uri
-     * @param array  $data
-     * @param array  $headers
      * @param null   $user
-     *
-     * @return TestResponse
      */
     public function put($uri, array $data = [], array $headers = [], $user = null): TestResponse
     {
@@ -351,11 +354,7 @@ abstract class TestCase extends \Illuminate\Foundation\Testing\TestCase
      * Override the DELETE calls to inject the user API key
      *
      * @param string $uri
-     * @param array  $data
-     * @param array  $headers
      * @param null   $user
-     *
-     * @return TestResponse
      */
     public function delete($uri, array $data = [], array $headers = [], $user = null): TestResponse
     {

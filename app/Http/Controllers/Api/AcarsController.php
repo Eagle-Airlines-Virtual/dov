@@ -27,26 +27,18 @@ class AcarsController extends Controller
 {
     /**
      * AcarsController constructor.
-     *
-     * @param AcarsRepository $acarsRepo
-     * @param GeoService      $geoSvc
-     * @param PirepRepository $pirepRepo
      */
     public function __construct(
         private readonly AcarsRepository $acarsRepo,
         private readonly GeoService $geoSvc,
         private readonly PirepRepository $pirepRepo
-    ) {
-    }
+    ) {}
 
     /**
      * Check if a PIREP is cancelled
      *
-     * @param Pirep $pirep
      *
      * @throws \App\Exceptions\PirepCancelled
-     *
-     * @return void
      */
     protected function checkCancelled(Pirep $pirep): void
     {
@@ -73,10 +65,6 @@ class AcarsController extends Controller
 
     /**
      * Return all of the flights (as points) in GeoJSON format
-     *
-     * @param Request $request
-     *
-     * @return JsonResponse
      */
     public function pireps_geojson(Request $request): JsonResponse
     {
@@ -90,11 +78,6 @@ class AcarsController extends Controller
 
     /**
      * Return the GeoJSON for the ACARS line
-     *
-     * @param string  $pirep_id
-     * @param Request $request
-     *
-     * @return JsonResponse
      */
     public function acars_geojson(string $pirep_id, Request $request): JsonResponse
     {
@@ -112,11 +95,6 @@ class AcarsController extends Controller
 
     /**
      * Return the routes for the ACARS line
-     *
-     * @param string  $id
-     * @param Request $request
-     *
-     * @return AcarsRouteResource
      */
     public function acars_get(string $id, Request $request): AcarsRouteResource
     {
@@ -139,13 +117,9 @@ class AcarsController extends Controller
     /**
      * Post ACARS updates for a PIREP
      *
-     * @param string          $id
-     * @param PositionRequest $request
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\BadRequestHttpException
      * @throws \App\Exceptions\PirepCancelled
-     *
-     * @return JsonResponse
+     * @throws \Symfony\Component\HttpKernel\Exception\BadRequestHttpException
      */
     public function acars_store(string $id, PositionRequest $request): JsonResponse
     {
@@ -167,6 +141,18 @@ class AcarsController extends Controller
         foreach ($positions as $position) {
             $position['pirep_id'] = $id;
             $position['type'] = AcarsType::FLIGHT_PATH;
+
+            if (isset($position['altitude'])) {
+                if (!isset($position['altitude_agl'])) {
+                    $position['altitude_agl'] = $position['altitude'];
+                }
+
+                if (!isset($position['altitude_msl'])) {
+                    $position['altitude_msl'] = $position['altitude'];
+                }
+
+                unset($position['altitude']);
+            }
 
             if (isset($position['sim_time'])) {
                 if ($position['sim_time'] instanceof \DateTime) {
@@ -206,7 +192,7 @@ class AcarsController extends Controller
             $pirep->status = PirepStatus::AIRBORNE;
         }*/
 
-        $pirep->save();
+        $saved = $pirep->save();
 
         // Post a new update for this ACARS position
         event(new AcarsUpdate($pirep, $pirep->position));
@@ -218,13 +204,9 @@ class AcarsController extends Controller
      * Post ACARS LOG update for a PIREP. These updates won't show up on the map
      * But rather in a log file.
      *
-     * @param string     $id
-     * @param LogRequest $request
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\BadRequestHttpException
      * @throws \App\Exceptions\PirepCancelled
-     *
-     * @return JsonResponse
+     * @throws \Symfony\Component\HttpKernel\Exception\BadRequestHttpException
      */
     public function acars_logs(string $id, LogRequest $request): JsonResponse
     {
@@ -265,7 +247,7 @@ class AcarsController extends Controller
 
                 $count++;
             } catch (QueryException $ex) {
-                Log::info('Error on adding ACARS position: '.$ex->getMessage());
+                Log::info('Error on adding ACARS log: '.$ex->getMessage());
             }
         }
 
@@ -276,13 +258,9 @@ class AcarsController extends Controller
      * Post ACARS LOG update for a PIREP. These updates won't show up on the map
      * But rather in a log file.
      *
-     * @param string       $id
-     * @param EventRequest $request
      *
-     * @throws \Symfony\Component\HttpKernel\Exception\BadRequestHttpException
      * @throws \App\Exceptions\PirepCancelled
-     *
-     * @return JsonResponse
+     * @throws \Symfony\Component\HttpKernel\Exception\BadRequestHttpException
      */
     public function acars_events(string $id, EventRequest $request): JsonResponse
     {
@@ -324,7 +302,7 @@ class AcarsController extends Controller
 
                 $count++;
             } catch (QueryException $ex) {
-                Log::info('Error on adding ACARS position: '.$ex->getMessage());
+                Log::info('Error on adding ACARS event: '.$ex->getMessage());
             }
         }
 

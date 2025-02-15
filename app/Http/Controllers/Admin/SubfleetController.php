@@ -21,6 +21,7 @@ use App\Repositories\TypeRatingRepository;
 use App\Services\ExportService;
 use App\Services\FareService;
 use App\Services\FileService;
+use App\Services\FinanceService;
 use App\Services\FleetService;
 use App\Services\ImportService;
 use Illuminate\Http\RedirectResponse;
@@ -34,19 +35,6 @@ class SubfleetController extends Controller
 {
     use Importable;
 
-    /**
-     * SubfleetController constructor.
-     *
-     * @param AircraftRepository   $aircraftRepo
-     * @param FareRepository       $fareRepo
-     * @param FareService          $fareSvc
-     * @param FileService          $fileSvc
-     * @param FleetService         $fleetSvc
-     * @param ImportService        $importSvc
-     * @param RankRepository       $rankRepo
-     * @param SubfleetRepository   $subfleetRepo
-     * @param TypeRatingRepository $typeratingRepo
-     */
     public function __construct(
         private readonly AircraftRepository $aircraftRepo,
         private readonly FareRepository $fareRepo,
@@ -56,33 +44,58 @@ class SubfleetController extends Controller
         private readonly ImportService $importSvc,
         private readonly RankRepository $rankRepo,
         private readonly SubfleetRepository $subfleetRepo,
-        private readonly TypeRatingRepository $typeratingRepo
-    ) {
-    }
+        private readonly TypeRatingRepository $typeratingRepo,
+        private readonly FinanceService $financeSvc,
+    ) {}
 
     /**
      * Display a listing of the Subfleet.
      *
-     * @param Request $request
      *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
-     *
-     * @return View
      */
     public function index(Request $request): View
     {
         $this->subfleetRepo->with(['airline'])->pushCriteria(new RequestCriteria($request));
-        $subfleets = $this->subfleetRepo->orderby('name', 'asc')->get();
+        $subfleets = $this->subfleetRepo->sortable('name')->get();
+        $trashed = $this->subfleetRepo->onlyTrashed()->orderBy('deleted_at', 'desc')->get();
 
         return view('admin.subfleets.index', [
             'subfleets' => $subfleets,
+            'trashed'   => $trashed,
         ]);
     }
 
     /**
+     * Recycle Bin operations, either restore or permanently delete the object
+     */
+    public function trashbin(Request $request)
+    {
+        $object_id = (isset($request->object_id)) ? $request->object_id : null;
+
+        $subfleet = Subfleet::onlyTrashed()->where('id', $object_id)->first();
+        $duplicate_check = Subfleet::where('type', $subfleet->type)->count();
+
+        if ($object_id && $request->action === 'restore') {
+            // Change the type id if it is used
+            if ($duplicate_check > 0) {
+                $subfleet->type = $subfleet->type.'_RESTORED';
+                $subfleet->save();
+            }
+            $subfleet->restore();
+            Flash::success('Subfleet RESTORED successfully.');
+        } elseif ($object_id && $request->action === 'delete') {
+            $subfleet->forceDelete();
+            Flash::error('Subfleet DELETED PERMANENTLY.');
+        } else {
+            Flash::info('Nothing done!');
+        }
+
+        return back();
+    }
+
+    /**
      * Show the form for creating a new Subfleet.
-     *
-     * @return View
      */
     public function create(): View
     {
@@ -97,11 +110,8 @@ class SubfleetController extends Controller
     /**
      * Store a newly created Subfleet in storage.
      *
-     * @param CreateSubfleetRequest $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function store(CreateSubfleetRequest $request): RedirectResponse
     {
@@ -114,10 +124,6 @@ class SubfleetController extends Controller
 
     /**
      * Display the specified Subfleet.
-     *
-     * @param int $id
-     *
-     * @return RedirectResponse|View
      */
     public function show(int $id): RedirectResponse|View
     {
@@ -141,10 +147,6 @@ class SubfleetController extends Controller
 
     /**
      * Show the form for editing the specified Subfleet.
-     *
-     * @param int $id
-     *
-     * @return RedirectResponse|View
      */
     public function edit(int $id): RedirectResponse|View
     {
@@ -182,12 +184,8 @@ class SubfleetController extends Controller
     /**
      * Update the specified Subfleet in storage.
      *
-     * @param int                   $id
-     * @param UpdateSubfleetRequest $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function update(int $id, UpdateSubfleetRequest $request): RedirectResponse
     {
@@ -207,10 +205,6 @@ class SubfleetController extends Controller
 
     /**
      * Remove the specified Subfleet from storage.
-     *
-     * @param int $id
-     *
-     * @return RedirectResponse
      */
     public function destroy(int $id): RedirectResponse
     {
@@ -243,10 +237,6 @@ class SubfleetController extends Controller
 
     /**
      * Run the subfleet exporter
-     *
-     * @param Request $request
-     *
-     * @return BinaryFileResponse
      */
     public function export(Request $request): BinaryFileResponse
     {
@@ -259,11 +249,7 @@ class SubfleetController extends Controller
     }
 
     /**
-     * @param Request $request
-     *
      * @throws \Illuminate\Validation\ValidationException
-     *
-     * @return View
      */
     public function import(Request $request): View
     {
@@ -283,10 +269,6 @@ class SubfleetController extends Controller
 
     /**
      * Get all the fares that haven't been assigned to a given subfleet
-     *
-     * @param Subfleet $subfleet
-     *
-     * @return array
      */
     protected function getAvailFares(Subfleet $subfleet): array
     {
@@ -306,10 +288,6 @@ class SubfleetController extends Controller
 
     /**
      * Get the ranks that are available to the subfleet
-     *
-     * @param Subfleet $subfleet
-     *
-     * @return array
      */
     protected function getAvailRanks(Subfleet $subfleet): array
     {
@@ -325,10 +303,6 @@ class SubfleetController extends Controller
 
     /**
      * Get the type ratings that are available to the subfleet
-     *
-     * @param Subfleet $subfleet
-     *
-     * @return array
      */
     protected function getAvailTypeRatings(Subfleet $subfleet): array
     {
@@ -343,23 +317,17 @@ class SubfleetController extends Controller
     }
 
     /**
-     * @param ?Subfleet $subfleet
-     *
      * @return mixed
      */
     protected function return_expenses_view(?Subfleet $subfleet): View
     {
         $subfleet->refresh();
+
         return view('admin.subfleets.expenses', [
             'subfleet' => $subfleet,
         ]);
     }
 
-    /**
-     * @param ?Subfleet $subfleet
-     *
-     * @return View
-     */
     protected function return_fares_view(?Subfleet $subfleet): View
     {
         $subfleet->refresh();
@@ -371,11 +339,6 @@ class SubfleetController extends Controller
         ]);
     }
 
-    /**
-     * @param ?Subfleet $subfleet
-     *
-     * @return View
-     */
     protected function return_ranks_view(?Subfleet $subfleet): View
     {
         $subfleet->refresh();
@@ -387,11 +350,6 @@ class SubfleetController extends Controller
         ]);
     }
 
-    /**
-     * @param ?Subfleet $subfleet
-     *
-     * @return View
-     */
     protected function return_typeratings_view(?Subfleet $subfleet): View
     {
         $subfleet->refresh();
@@ -406,15 +364,12 @@ class SubfleetController extends Controller
     /**
      * Operations for associating ranks to the subfleet
      *
-     * @param int     $id
-     * @param Request $request
      *
      * @throws \Exception
-     *
-     * @return View
      */
     public function expenses(int $id, Request $request): View
     {
+        /** @var Subfleet $subfleet */
         $subfleet = $this->subfleetRepo->findWithoutFail($id);
         if (empty($subfleet)) {
             return $this->return_expenses_view($subfleet);
@@ -428,10 +383,11 @@ class SubfleetController extends Controller
          * update specific rank data
          */
         if ($request->isMethod('post')) {
-            $expense = new Expense($request->post());
-            $expense->ref_model = Subfleet::class;
-            $expense->ref_model_id = $subfleet->id;
-            $expense->save();
+            $this->financeSvc->addExpense(
+                $request->post(),
+                $subfleet,
+                $subfleet->airline_id
+            );
         } elseif ($request->isMethod('put')) {
             $expense = Expense::findOrFail($request->input('expense_id'));
             $expense->{$request->name} = $request->value;
@@ -447,11 +403,6 @@ class SubfleetController extends Controller
 
     /**
      * Operations on fares to the subfleet
-     *
-     * @param int     $id
-     * @param Request $request
-     *
-     * @return View
      */
     public function fares(int $id, Request $request): View
     {
@@ -487,11 +438,6 @@ class SubfleetController extends Controller
 
     /**
      * Operations for associating ranks to the subfleet
-     *
-     * @param int     $id
-     * @param Request $request
-     *
-     * @return View
      */
     public function ranks(int $id, Request $request): View
     {
@@ -506,8 +452,10 @@ class SubfleetController extends Controller
 
         // associate rank with the subfleet
         if ($request->isMethod('post')) {
-            $rank = $this->rankRepo->find($request->input('rank_id'));
-            $this->fleetSvc->addSubfleetToRank($subfleet, $rank);
+            foreach ($request->input('rank_ids') as $rank_id) {
+                $rank = $this->rankRepo->find($rank_id);
+                $this->fleetSvc->addSubfleetToRank($subfleet, $rank);
+            }
         } // override definitions
         elseif ($request->isMethod('put')) {
             $override = [];
@@ -528,11 +476,6 @@ class SubfleetController extends Controller
 
     /**
      * Operations for associating type ratings to the subfleet
-     *
-     * @param int     $id
-     * @param Request $request
-     *
-     * @return View
      */
     public function typeratings(int $id, Request $request): View
     {

@@ -17,14 +17,15 @@ class WhereCriteria implements CriteriaInterface
      * @var \Illuminate\Http\Request
      */
     protected $request;
+
     protected $where;
+
     protected $relations;
 
     /**
      * Create a new Where search.
      *
-     * @param Request $request
-     * @param array   $where
+     * @param array $where
      * @param array   [$relations] Any whereHas (key = table name, value = array of criterea
      */
     public function __construct(Request $request, $where, $relations = [])
@@ -37,12 +38,10 @@ class WhereCriteria implements CriteriaInterface
     /**
      * Apply criteria in query repository
      *
-     * @param Builder|Model       $model
-     * @param RepositoryInterface $repository
+     * @param  Builder|Model $model
+     * @return mixed
      *
      * @throws \Exception
-     *
-     * @return mixed
      */
     public function apply($model, RepositoryInterface $repository)
     {
@@ -56,7 +55,17 @@ class WhereCriteria implements CriteriaInterface
                 $model = $model
                     ->with($relation)
                     ->whereHas($relation, function (Builder $query) use ($criterea) {
-                        $query->where($criterea);
+                        // By Taylor Broad
+                        if (!isset($criterea['method'])) {
+                            $query->where($criterea);
+                        } else {
+                            if ($criterea['method'] == 'where') {
+                                $query->where($criterea['query']);
+                            }
+                            if ($criterea['method'] == 'whereIn') {
+                                $query->whereIn($criterea['query']['key'], $criterea['query']['values']);
+                            }
+                        }
                     });
             }
         }

@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use App\Contracts\Model;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Kyslik\ColumnSortable\Sortable;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * @property string name
@@ -21,6 +24,7 @@ use Kyslik\ColumnSortable\Sortable;
 class Rank extends Model
 {
     use HasFactory;
+    use LogsActivity;
     use SoftDeletes;
     use Sortable;
 
@@ -58,6 +62,34 @@ class Rank extends Model
         'acars_base_pay_rate',
         'manual_base_pay_rate',
     ];
+
+    /**
+     * Return image_url always as full uri
+     */
+    public function imageUrl(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if (!filled($value)) {
+                    return null;
+                }
+
+                if (str_contains($value, 'http')) {
+                    return $value;
+                }
+
+                return public_url($value);
+            },
+        );
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     /*
      * Relationships

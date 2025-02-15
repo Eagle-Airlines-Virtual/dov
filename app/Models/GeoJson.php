@@ -29,8 +29,6 @@ class GeoJson
     protected $point_coords = [];
 
     /**
-     * @param       $lat
-     * @param       $lon
      * @param array $attrs Attributes of the Feature
      */
     public function addPoint($lat, $lon, array $attrs)
@@ -39,7 +37,7 @@ class GeoJson
         $this->line_coords[] = [$lon, $lat];
 
         if (array_key_exists('alt', $attrs)) {
-            $point[] = $attrs['alt'];
+            $point[] = (float) $attrs['alt'];
         }
 
         $this->point_coords[] = new Feature(new Point($point), $attrs);
@@ -48,8 +46,6 @@ class GeoJson
 
     /**
      * Get the FeatureCollection for the line
-     *
-     * @return FeatureCollection
      */
     public function getLine(): FeatureCollection
     {
@@ -64,8 +60,6 @@ class GeoJson
 
     /**
      * Get the feature collection of all the points
-     *
-     * @return FeatureCollection
      */
     public function getPoints(): FeatureCollection
     {

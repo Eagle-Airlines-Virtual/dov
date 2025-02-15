@@ -7,23 +7,20 @@ use App\Repositories\KvpRepository;
 use App\Support\HttpClient;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Log;
-use SemVer\SemVer\Version;
 use Symfony\Component\Yaml\Yaml;
+use Version\Version;
 
 class VersionService extends Service
 {
     public function __construct(
         private readonly HttpClient $httpClient,
         private readonly KvpRepository $kvpRepo
-    ) {
-    }
+    ) {}
 
     /**
      * Clean the version string (e.,g strip the v in front)
      *
      * @param string $version
-     *
-     * @return string
      */
     private function cleanVersionString($version): string
     {
@@ -37,8 +34,6 @@ class VersionService extends Service
     /**
      * Set the latest release version/tag into the KVP repo and return the tag
      *
-     * @param $version_tag
-     * @param $download_url
      *
      * @return string The version string
      */
@@ -54,10 +49,6 @@ class VersionService extends Service
 
     /**
      * Find and return the Github asset line
-     *
-     * @param $release
-     *
-     * @return string
      */
     private function getGithubAsset($release): string
     {
@@ -104,6 +95,7 @@ class VersionService extends Service
             }
 
             Log::info('Found latest release of '.$release['tag_name']);
+
             return $this->setLatestRelease(
                 $release['tag_name'],
                 $this->getGithubAsset($release)
@@ -114,19 +106,19 @@ class VersionService extends Service
     }
 
     /**
-     * Downloads the latest version and saves it into the KVP store
+     * DownloadList the latest version and saves it into the KVP store
      */
     public function getLatestVersion()
     {
         $latest_version = $this->getLatestVersionGithub();
+
         return $latest_version;
     }
 
     /**
      * Get the build ID, which is the date and the git log version
      *
-     * @param array $cfg
-     *
+     * @param  array  $cfg
      * @return string
      */
     public function getBuildId($cfg)
@@ -137,8 +129,7 @@ class VersionService extends Service
     /**
      * Generate a build ID
      *
-     * @param array $cfg The version config
-     *
+     * @param  array        $cfg The version config
      * @return false|string
      */
     public function generateBuildId($cfg)
@@ -160,8 +151,7 @@ class VersionService extends Service
     /**
      * Get the current version
      *
-     * @param bool $include_build True will include the build ID
-     *
+     * @param  bool   $include_build True will include the build ID
      * @return string
      */
     public function getCurrentVersion($include_build = true)
@@ -171,16 +161,13 @@ class VersionService extends Service
 
         $c = $cfg['current'];
         $version = "{$c['major']}.{$c['minor']}.{$c['patch']}";
-        if ($c['prerelease'] !== '') {
+        if (!empty($c['prerelease'])) {
             $version .= "-{$c['prerelease']}";
-            if ($c['buildmetadata'] !== '') {
-                $version .= ".{$c['buildmetadata']}";
-            }
         }
 
         if ($include_build) {
             // Get the current build id
-            $build_number = $this->getBuildId($cfg);
+            $build_number = $c['buildmetadata'];
             if (!empty($build_number)) {
                 $version = $version.'+'.$build_number;
             }
@@ -193,7 +180,6 @@ class VersionService extends Service
      * See if a new version is available. Saves a flag into the KVP store if there is
      *
      * @param null [$current_version]
-     *
      * @return bool
      */
     public function isNewVersionAvailable($current_version = null)
@@ -210,6 +196,7 @@ class VersionService extends Service
         // No new/released version found
         if (empty($latest_version)) {
             $this->kvpRepo->save('new_version_available', false);
+
             return false;
         }
 
@@ -217,23 +204,25 @@ class VersionService extends Service
         if ($this->isGreaterThan($latest_version, $current_version)) {
             Log::info('Latest version "'.$latest_version.'" is greater than "'.$current_version.'"');
             $this->kvpRepo->save('new_version_available', true);
+
             return true;
         }
 
         $this->kvpRepo->save('new_version_available', false);
+
         return false;
     }
 
     /**
-     * @param string $version1
-     * @param string $version2
-     *
-     * @return bool If $version1 is greater than $version2
+     * @param  string $version1
+     * @param  string $version2
+     * @return bool   If $version1 is greater than $version2
      */
     public function isGreaterThan($version1, $version2): bool
     {
-        $version1 = Version::fromString($version1);
-        $version2 = Version::fromString($version2);
-        return $version1->isGreaterThan($version2);
+        $parsedVersion1 = Version::fromString($version1);
+        $parsedVersion2 = Version::fromString($version2);
+
+        return $parsedVersion1->isGreaterThan($parsedVersion2);
     }
 }

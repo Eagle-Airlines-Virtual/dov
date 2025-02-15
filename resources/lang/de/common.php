@@ -16,7 +16,7 @@ return [
     'logout'         => 'Ausloggen',
     'timezone'       => 'Timezone',
     'country'        => 'Land',
-    'download'       => 'Download|Downloads',
+    'download'       => 'Download|DownloadList',
     'from'           => 'von',
     'to'             => 'an',
     'state'          => 'Standort',
@@ -59,4 +59,9 @@ return [
         'sat'   => 'Samstag',
         'sun'   => 'Sonntag',
     ],
+    'external_redirection' => 'Externe Weiterleitung',
+    'abouttoleave'         => 'Sie sind dabei, diese Website zu verlassen und werden weitergeleitet zu',
+    'wanttocontinue'       => 'Möchten Sie fortfahren?',
+    'continue'             => 'Weiter',
+    'alwaystrustdomain'    => 'Immer diesem Domain vertrauen',
 ];

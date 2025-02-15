@@ -10,41 +10,26 @@ use Symfony\Component\Yaml\Yaml;
 
 class Database
 {
-    /**
-     * @return string
-     */
     protected static function time(): string
     {
         return Carbon::now('UTC');
     }
 
     /**
-     * @param      $yaml_file
-     * @param bool $ignore_errors
-     *
      * @throws \Exception
-     *
-     * @return array
      */
     public static function seed_from_yaml_file($yaml_file, bool $ignore_errors = false): array
     {
         $yml = file_get_contents($yaml_file);
+        $yml = Yaml::parse($yml);
 
         return static::seed_from_yaml($yml, $ignore_errors);
     }
 
-    /**
-     * @param      $yml
-     * @param bool $ignore_errors
-     *
-     * @throws \Exception
-     *
-     * @return array
-     */
-    public static function seed_from_yaml($yml, bool $ignore_errors = false): array
+    public static function seed_from_yaml(mixed $yml, bool $ignore_errors = false): array
     {
         $imported = [];
-        $yml = Yaml::parse($yml);
+
         if (empty($yml)) {
             return $imported;
         }
@@ -62,6 +47,11 @@ class Database
                 $ignore_on_update = $data['ignore_on_update'];
             }
 
+            $ignore_if_exists = false;
+            if (array_key_exists('ignore_if_exists', $data)) {
+                $ignore_if_exists = $data['ignore_if_exists'];
+            }
+
             if (array_key_exists('data', $data)) {
                 $rows = $data['data'];
             } else {
@@ -70,7 +60,14 @@ class Database
 
             foreach ($rows as $row) {
                 try {
-                    static::insert_row($table, $row, $id_column, $ignore_on_update);
+                    static::insert_row(
+                        $table,
+                        $row,
+                        $id_column,
+                        $ignore_on_update,
+                        true,
+                        $ignore_if_exists
+                    );
                 } catch (QueryException $e) {
                     if ($ignore_errors) {
                         continue;
@@ -87,12 +84,7 @@ class Database
     }
 
     /**
-     * @param string $table
-     * @param array  $row
-     * @param string $id_col            The ID column to use for update/insert
-     * @param array  $ignore_on_updates
-     * @param bool   $ignore_errors
-     *
+     * @param  string $id_col The ID column to use for update/insert
      * @return mixed
      */
     public static function insert_row(
@@ -100,7 +92,8 @@ class Database
         array $row = [],
         string $id_col = 'id',
         array $ignore_on_updates = [],
-        bool $ignore_errors = true
+        bool $ignore_errors = true,
+        bool $ignore_if_exists = true,
     ) {
         // encrypt any password fields
         if (array_key_exists('password', $row)) {
@@ -125,6 +118,10 @@ class Database
 
         try {
             if ($count > 0) {
+                if ($ignore_if_exists) {
+                    return $row;
+                }
+
                 foreach ($ignore_on_updates as $ignore_column) {
                     if (array_key_exists($ignore_column, $row)) {
                         unset($row[$ignore_column]);

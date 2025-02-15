@@ -13,6 +13,7 @@ use App\Repositories\AirportRepository;
 use App\Repositories\Criteria\WhereCriteria;
 use App\Services\ExportService;
 use App\Services\FileService;
+use App\Services\FinanceService;
 use App\Services\ImportService;
 use App\Support\Timezonelist;
 use Illuminate\Http\RedirectResponse;
@@ -25,26 +26,18 @@ class AirportController extends Controller
 {
     use Importable;
 
-    /**
-     * @param AirportRepository $airportRepo
-     * @param FileService       $fileSvc
-     * @param ImportService     $importSvc
-     */
     public function __construct(
         private readonly AirportRepository $airportRepo,
         private readonly FileService $fileSvc,
         private readonly ImportService $importSvc,
-    ) {
-    }
+        private readonly FinanceService $financeSvc,
+    ) {}
 
     /**
      * Display a listing of the Airport.
      *
-     * @param Request $request
      *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
-     *
-     * @return View
      */
     public function index(Request $request): View
     {
@@ -54,9 +47,7 @@ class AirportController extends Controller
         }
 
         $this->airportRepo->pushCriteria(new WhereCriteria($request, $where));
-        $airports = $this->airportRepo
-            ->orderBy('icao', 'asc')
-            ->paginate();
+        $airports = $this->airportRepo->sortable('icao')->paginate();
 
         return view('admin.airports.index', [
             'airports' => $airports,
@@ -65,8 +56,6 @@ class AirportController extends Controller
 
     /**
      * Show the form for creating a new Airport.
-     *
-     * @return View
      */
     public function create(): View
     {
@@ -78,11 +67,8 @@ class AirportController extends Controller
     /**
      * Store a newly created Airport in storage.
      *
-     * @param CreateAirportRequest $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function store(CreateAirportRequest $request): RedirectResponse
     {
@@ -92,15 +78,12 @@ class AirportController extends Controller
         $this->airportRepo->create($input);
 
         Flash::success('Airport saved successfully.');
+
         return redirect(route('admin.airports.index'));
     }
 
     /**
      * Display the specified Airport.
-     *
-     * @param string $id
-     *
-     * @return View
      */
     public function show(string $id): View
     {
@@ -108,6 +91,7 @@ class AirportController extends Controller
 
         if (empty($airport)) {
             Flash::error('Airport not found');
+
             return redirect(route('admin.airports.index'));
         }
 
@@ -118,10 +102,6 @@ class AirportController extends Controller
 
     /**
      * Show the form for editing the specified Airport.
-     *
-     * @param string $id
-     *
-     * @return View
      */
     public function edit(string $id): View
     {
@@ -129,6 +109,7 @@ class AirportController extends Controller
 
         if (empty($airport)) {
             Flash::error('Airport not found');
+
             return redirect(route('admin.airports.index'));
         }
 
@@ -141,12 +122,8 @@ class AirportController extends Controller
     /**
      * Update the specified Airport in storage.
      *
-     * @param string               $id
-     * @param UpdateAirportRequest $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function update(string $id, UpdateAirportRequest $request): RedirectResponse
     {
@@ -154,6 +131,7 @@ class AirportController extends Controller
 
         if (empty($airport)) {
             Flash::error('Airport not found');
+
             return redirect(route('admin.airports.index'));
         }
 
@@ -163,15 +141,12 @@ class AirportController extends Controller
         $this->airportRepo->update($attrs, $id);
 
         Flash::success('Airport updated successfully.');
+
         return redirect(route('admin.airports.index'));
     }
 
     /**
      * Remove the specified Airport from storage.
-     *
-     * @param string $id
-     *
-     * @return RedirectResponse
      */
     public function destroy(string $id): RedirectResponse
     {
@@ -179,6 +154,7 @@ class AirportController extends Controller
 
         if (empty($airport)) {
             Flash::error('Airport not found');
+
             return redirect(route('admin.airports.index'));
         }
 
@@ -189,17 +165,15 @@ class AirportController extends Controller
         $this->airportRepo->delete($id);
 
         Flash::success('Airport deleted successfully.');
+
         return redirect(route('admin.airports.index'));
     }
 
     /**
      * Run the airport exporter
      *
-     * @param Request $request
      *
      * @throws \League\Csv\Exception
-     *
-     * @return BinaryFileResponse
      */
     public function export(Request $request): BinaryFileResponse
     {
@@ -207,6 +181,7 @@ class AirportController extends Controller
         $airports = $this->airportRepo->all();
 
         $path = $exporter->exportAirports($airports);
+
         return response()
             ->download($path, 'airports.csv', [
                 'content-type' => 'text/csv',
@@ -215,11 +190,7 @@ class AirportController extends Controller
     }
 
     /**
-     * @param Request $request
-     *
      * @throws \Illuminate\Validation\ValidationException
-     *
-     * @return View
      */
     public function import(Request $request): View
     {
@@ -237,14 +208,10 @@ class AirportController extends Controller
         ]);
     }
 
-    /**
-     * @param Airport $airport
-     *
-     * @return View
-     */
     protected function return_expenses_view(Airport $airport): View
     {
         $airport->refresh();
+
         return view('admin.airports.expenses', [
             'airport' => $airport,
         ]);
@@ -253,12 +220,8 @@ class AirportController extends Controller
     /**
      * Operations for associating ranks to the subfleet
      *
-     * @param string  $id
-     * @param Request $request
      *
      * @throws \Exception
-     *
-     * @return View
      */
     public function expenses(string $id, Request $request): View
     {
@@ -272,10 +235,10 @@ class AirportController extends Controller
         }
 
         if ($request->isMethod('post')) {
-            $expense = new Expense($request->post());
-            $expense->ref_model = Airport::class;
-            $expense->ref_model_id = $airport->id;
-            $expense->save();
+            $this->financeSvc->addExpense(
+                $request->post(),
+                $airport,
+            );
         } elseif ($request->isMethod('put')) {
             $expense = Expense::findOrFail($request->input('expense_id'));
             $expense->{$request->name} = $request->value;
@@ -291,12 +254,8 @@ class AirportController extends Controller
 
     /**
      * Set fuel prices for this airport
-     *
-     * @param Request $request
-     *
-     * @return RedirectResponse|null
      */
-    public function fuel(Request $request): RedirectResponse|null
+    public function fuel(Request $request): ?RedirectResponse
     {
         $id = $request->id;
 
@@ -313,6 +272,7 @@ class AirportController extends Controller
         }
 
         $airport->save();
+
         return null;
     }
 }

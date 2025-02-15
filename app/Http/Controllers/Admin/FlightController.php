@@ -36,16 +36,6 @@ class FlightController extends Controller
 
     /**
      * FlightController constructor.
-     *
-     * @param AirlineRepository     $airlineRepo
-     * @param AirportRepository     $airportRepo
-     * @param FareRepository        $fareRepo
-     * @param FlightRepository      $flightRepo
-     * @param FlightFieldRepository $flightFieldRepo
-     * @param FareService           $fareSvc
-     * @param FlightService         $flightSvc
-     * @param ImportService         $importSvc
-     * @param SubfleetRepository    $subfleetRepo
      */
     public function __construct(
         private readonly AirlineRepository $airlineRepo,
@@ -57,14 +47,10 @@ class FlightController extends Controller
         private readonly FlightService $flightSvc,
         private readonly ImportService $importSvc,
         private readonly SubfleetRepository $subfleetRepo
-    ) {
-    }
+    ) {}
 
     /**
      * Save any custom fields found
-     *
-     * @param Flight  $flight
-     * @param Request $request
      */
     protected function saveCustomFields(Flight $flight, Request $request): void
     {
@@ -85,11 +71,6 @@ class FlightController extends Controller
         $this->flightSvc->updateCustomFields($flight, $custom_fields);
     }
 
-    /**
-     * @param $flight
-     *
-     * @return array
-     */
     protected function getAvailSubfleets(Flight $flight): array
     {
         $retval = [];
@@ -106,18 +87,16 @@ class FlightController extends Controller
     }
 
     /**
-     * @param Request $request
-     *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
-     *
-     * @return View
      */
     public function index(Request $request): View
     {
         $flights = $this->flightRepo
-            ->with(['dpt_airport', 'arr_airport', 'alt_airport', 'airline'])
+            ->with(['dpt_airport', 'arr_airport', 'alt_airport', 'airline', 'subfleets'])
+            ->withCount(['subfleets', 'fares'])
             ->searchCriteria($request, false)
-            ->orderBy('flight_number', 'asc')
+            ->whereNull('owner_type')
+            ->sortable('flight_number')->orderBy('route_code')->orderBy('route_leg')
             ->paginate();
 
         return view('admin.flights.index', [
@@ -129,8 +108,6 @@ class FlightController extends Controller
 
     /**
      * Show the form for creating a new Flight.
-     *
-     * @return View
      */
     public function create(): View
     {
@@ -146,37 +123,31 @@ class FlightController extends Controller
     }
 
     /**
-     * @param CreateFlightRequest $request
-     *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function store(CreateFlightRequest $request): RedirectResponse
     {
         try {
-            $flight = $this->flightSvc->createFlight($request->all());
+            $fields = $request->all();
+            $flight = $this->flightSvc->createFlight($fields);
             Flash::success('Flight saved successfully.');
 
             return redirect(route('admin.flights.edit', $flight->id));
         } catch (\Exception $e) {
             Log::error($e);
             Flash::error($e->getMessage());
+
             return redirect()->back()->withInput($request->all());
         }
     }
 
-    /**
-     * @param string $id
-     *
-     * @return RedirectResponse|View
-     */
     public function show(string $id): RedirectResponse|View
     {
         $flight = $this->flightRepo->findWithoutFail($id);
 
         if (empty($flight)) {
             Flash::error('Flight not found');
+
             return redirect(route('admin.flights.index'));
         }
 
@@ -189,11 +160,6 @@ class FlightController extends Controller
         ]);
     }
 
-    /**
-     * @param string $id
-     *
-     * @return RedirectResponse|View
-     */
     public function edit(string $id): RedirectResponse|View
     {
         /** @var Flight $flight */
@@ -203,6 +169,7 @@ class FlightController extends Controller
 
         if (empty($flight)) {
             Flash::error('Flight not found');
+
             return redirect(route('admin.flights.index'));
         }
 
@@ -235,12 +202,7 @@ class FlightController extends Controller
     }
 
     /**
-     * @param string              $id
-     * @param UpdateFlightRequest $request
-     *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function update(string $id, UpdateFlightRequest $request): RedirectResponse
     {
@@ -248,6 +210,7 @@ class FlightController extends Controller
 
         if (empty($flight)) {
             Flash::error('Flight not found');
+
             return redirect(route('admin.flights.index'));
         }
 
@@ -259,16 +222,13 @@ class FlightController extends Controller
         } catch (\Exception $e) {
             Log::error($e);
             Flash::error($e->getMessage());
+
             return redirect()->back()->withInput($request->all());
         }
     }
 
     /**
-     * @param string $id
-     *
      * @throws \Exception
-     *
-     * @return RedirectResponse
      */
     public function destroy(string $id): RedirectResponse
     {
@@ -276,23 +236,22 @@ class FlightController extends Controller
 
         if (empty($flight)) {
             Flash::error('Flight not found');
+
             return redirect(route('admin.flights.index'));
         }
 
         $this->flightSvc->deleteFlight($flight);
 
         Flash::success('Flight deleted successfully.');
+
         return redirect(route('admin.flights.index'));
     }
 
     /**
      * Run the flight exporter
      *
-     * @param Request $request
      *
      * @throws \League\Csv\Exception
-     *
-     * @return BinaryFileResponse
      */
     public function export(Request $request): BinaryFileResponse
     {
@@ -308,15 +267,12 @@ class FlightController extends Controller
         $flights = $this->flightRepo->where($where)->orderBy('airline_id')->orderBy('flight_number')->orderBy('route_code')->orderBy('route_leg')->get();
 
         $path = $exporter->exportFlights($flights);
+
         return response()->download($path, $file_name, ['content-type' => 'text/csv'])->deleteFileAfterSend(true);
     }
 
     /**
-     * @param Request $request
-     *
      * @throws \Illuminate\Validation\ValidationException
-     *
-     * @return View
      */
     public function import(Request $request): View
     {
@@ -334,31 +290,22 @@ class FlightController extends Controller
         ]);
     }
 
-    /**
-     * @param Flight $flight
-     *
-     * @return View
-     */
     protected function return_fields_view(Flight $flight): View
     {
         $flight->refresh();
+
         return view('admin.flights.flight_fields', [
             'flight'        => $flight,
             'flight_fields' => $this->flightFieldRepo->all(),
         ]);
     }
 
-    /**
-     * @param string  $flight_id
-     * @param Request $request
-     *
-     * @return RedirectResponse|View
-     */
     public function field_values(string $flight_id, Request $request): RedirectResponse|View
     {
         $flight = $this->flightRepo->findWithoutFail($flight_id);
         if (empty($flight)) {
             Flash::error('Flight not found');
+
             return redirect(route('admin.flights.index'));
         }
 
@@ -387,7 +334,7 @@ class FlightController extends Controller
             $field->flight_id = $flight_id;
             $field->value = $request->input('value');
             $field->save();
-        // update the field value
+            // update the field value
         } // remove custom field from flight
         elseif ($request->isMethod('delete')) {
             Log::info('Deleting flight field, flight: '.$flight_id, $request->input());
@@ -399,11 +346,6 @@ class FlightController extends Controller
         return $this->return_fields_view($flight);
     }
 
-    /**
-     * @param Flight $flight
-     *
-     * @return View
-     */
     protected function return_subfleet_view(Flight $flight): View
     {
         $avail_subfleets = $this->getAvailSubfleets($flight);
@@ -414,33 +356,31 @@ class FlightController extends Controller
         ]);
     }
 
-    /**
-     * @param string  $id
-     * @param Request $request
-     *
-     * @return RedirectResponse|View
-     */
     public function subfleets(string $id, Request $request): RedirectResponse|View
     {
         $flight = $this->flightRepo->findWithoutFail($id);
         if (empty($flight)) {
             Flash::error('Flight not found');
+
             return redirect(route('admin.flights.index'));
         }
 
         $fleetSvc = app(FleetService::class);
 
-        // add aircraft to flight
-        $subfleet = $this->subfleetRepo->findWithoutFail($request->subfleet_id);
-        if (!$subfleet) {
-            return $this->return_subfleet_view($flight);
-        }
-
-        if ($request->isMethod('post')) {
-            $fleetSvc->addSubfleetToFlight($subfleet, $flight);
-        } // remove aircraft from flight
-        elseif ($request->isMethod('delete')) {
-            $fleetSvc->removeSubfleetFromFlight($subfleet, $flight);
+        if ($request->isMethod('post') && filled($request->subfleet_ids)) {
+            // Add selected subfleets to flight
+            foreach ($request->subfleet_ids as $sf) {
+                $subfleet = $this->subfleetRepo->findWithoutFail($sf);
+                if ($subfleet) {
+                    $fleetSvc->addSubfleetToFlight($subfleet, $flight);
+                }
+            }
+        } elseif ($request->isMethod('delete')) {
+            // Delete the subfleet from flight
+            $subfleet = $this->subfleetRepo->findWithoutFail($request->subfleet_id);
+            if ($subfleet) {
+                $fleetSvc->removeSubfleetFromFlight($subfleet, $flight);
+            }
         }
 
         return $this->return_subfleet_view($flight);
@@ -448,10 +388,6 @@ class FlightController extends Controller
 
     /**
      * Get all the fares that haven't been assigned to a given subfleet
-     *
-     * @param Flight $flight
-     *
-     * @return array
      */
     protected function getAvailFares(Flight $flight): array
     {
@@ -465,11 +401,6 @@ class FlightController extends Controller
         return $retval;
     }
 
-    /**
-     * @param Flight $flight
-     *
-     * @return View
-     */
     protected function return_fares_view(Flight $flight): View
     {
         $flight->refresh();
@@ -480,11 +411,6 @@ class FlightController extends Controller
         ]);
     }
 
-    /**
-     * @param Request $request
-     *
-     * @return View
-     */
     public function fares(Request $request): View
     {
         $id = $request->id;

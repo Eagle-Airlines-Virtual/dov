@@ -3,12 +3,13 @@
 namespace App\Console\Commands;
 
 use App\Contracts\Command;
-use App\Services\ImporterService;
+use App\Services\LegacyImporterService;
 use Illuminate\Support\Facades\Log;
 
 class ImportFromClassicCommand extends Command
 {
     protected $signature = 'phpvms:importer {db_host} {db_name} {db_user} {db_pass?} {table_prefix=phpvms_}';
+
     protected $description = 'Import from an older version of phpVMS';
 
     /**
@@ -24,7 +25,7 @@ class ImportFromClassicCommand extends Command
             'table_prefix' => $this->argument('table_prefix'),
         ];
 
-        $importerSvc = new ImporterService();
+        $importerSvc = new LegacyImporterService();
 
         $importerSvc->saveCredentials($creds);
         $manifest = $importerSvc->generateImportManifest();

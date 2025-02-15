@@ -31,18 +31,21 @@ class UserRepository extends Repository
     /**
      * Get all of the fields which has the mapped values
      *
-     * @param User $user
-     * @param bool $only_public_fields Only include the user's public fields
-     *
+     * @param  bool                                                                                            $only_public_fields   Only include the user's public fields
+     * @param  mixed                                                                                           $with_internal_fields
      * @return \App\Models\UserField[]|\Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection
      */
-    public function getUserFields(User $user, $only_public_fields = null): Collection
+    public function getUserFields(User $user, $only_public_fields = null, $with_internal_fields = false): Collection
     {
+        $fields = UserField::when(!$with_internal_fields, function ($query) {
+            return $query->where('internal', false);
+        });
+
         if (is_bool($only_public_fields)) {
-            $fields = UserField::where(['private' => !$only_public_fields])->get();
-        } else {
-            $fields = UserField::get();
+            $fields = $fields->where(['private' => !$only_public_fields]);
         }
+
+        $fields = $fields->get();
 
         return $fields->map(function ($field, $_) use ($user) {
             foreach ($user->fields as $userFieldValue) {
@@ -74,12 +77,10 @@ class UserRepository extends Repository
     /**
      * Create the search criteria and return this with the stuff pushed
      *
-     * @param Request $request
-     * @param bool    $only_active
-     *
-     * @throws \Prettus\Repository\Exceptions\RepositoryException
      *
      * @return $this
+     *
+     * @throws \Prettus\Repository\Exceptions\RepositoryException
      */
     public function searchCriteria(Request $request, bool $only_active = true)
     {

@@ -10,19 +10,16 @@ use Illuminate\Database\Eloquent\Collection;
 class AcarsReplay extends Command
 {
     protected $signature = 'phpvms:replay {files} {--manual} {--write-all} {--no-submit}';
+
     protected $description = 'Replay an ACARS file';
 
     /**
      * API Key to post as
-     *
-     * @var string
      */
     protected string $apiKey = 'testadminapikey';
 
     /**
      * For automatic updates, how many seconds to sleep between updates
-     *
-     * @var int
      */
     protected int $sleepTime = 10;
 
@@ -32,9 +29,6 @@ class AcarsReplay extends Command
      */
     protected array $pirepList = [];
 
-    /**
-     * @var Client
-     */
     protected Client $httpClient;
 
     /**
@@ -58,8 +52,6 @@ class AcarsReplay extends Command
      * @param \stdClass $flight
      *
      * @throws \RuntimeException
-     *
-     * @return string
      */
     protected function startPirep($flight): string
     {
@@ -92,11 +84,10 @@ class AcarsReplay extends Command
     /**
      * Mark the PIREP as filed
      *
-     * @param $pirep_id
-     *
-     * @throws \RuntimeException
      *
      * @return mixed
+     *
+     * @throws \RuntimeException
      */
     protected function filePirep($pirep_id)
     {
@@ -110,25 +101,24 @@ class AcarsReplay extends Command
     }
 
     /**
-     * @param $pirep_id
-     * @param $data
+     * @return array
      *
      * @throws \RuntimeException
-     *
-     * @return array
      */
     protected function postUpdate($pirep_id, $data)
     {
         $uri = '/api/pireps/'.$pirep_id.'/acars/position';
 
         $position = [
-            'log'         => '',
-            'lat'         => $data->latitude,
-            'lon'         => $data->longitude,
-            'heading'     => $data->heading,
-            'altitude'    => $data->altitude,
-            'gs'          => $data->groundspeed,
-            'transponder' => $data->transponder,
+            'log'          => '',
+            'lat'          => $data->latitude,
+            'lon'          => $data->longitude,
+            'heading'      => $data->heading,
+            'altitude'     => $data->altitude,
+            'altitude_agl' => $data->altitude,
+            'altitude_msl' => $data->altitude,
+            'gs'           => $data->groundspeed,
+            'transponder'  => $data->transponder,
         ];
 
         $upd = [
@@ -137,8 +127,10 @@ class AcarsReplay extends Command
             ],
         ];
 
-        $this->info("Update: $data->callsign, $position[lat] x $position[lon] \t\t"
-            ."hdg: $position[heading]\t\talt: $position[altitude]\t\tgs: $position[gs]");
+        $this->info(
+            "Update: $data->callsign, $position[lat] x $position[lon] \t\t"
+            ."hdg: $position[heading]\t\talt: $position[altitude]\t\tgs: $position[gs]"
+        );
 
         $response = $this->httpClient->post($uri, [
             'json' => $upd,
@@ -152,6 +144,8 @@ class AcarsReplay extends Command
             $position['lon'],
             $position['heading'],
             $position['altitude'],
+            $position['altitude_agl'],
+            $position['altitude_msl'],
             $position['gs'],
         ];
     }
@@ -159,7 +153,6 @@ class AcarsReplay extends Command
     /**
      * Parse this file and run the updates
      *
-     * @param array $files
      *
      * @throws \RuntimeException
      */
@@ -234,9 +227,9 @@ class AcarsReplay extends Command
     /**
      * Execute the console command.
      *
-     * @throws \RuntimeException
-     *
      * @return mixed
+     *
+     * @throws \RuntimeException
      */
     public function handle(): void
     {

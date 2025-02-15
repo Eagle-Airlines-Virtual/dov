@@ -5,10 +5,6 @@
     margin-top: 2px;
 }
 
-nav.navbar.navbar-default {
-    background-color: #001746!important;
-}
-
 .map-info-box {
     position: absolute;
     bottom: 0;
@@ -25,7 +21,7 @@ nav.navbar.navbar-default {
 }
 
 .dashboard-box {
-    background: #001746;
+    background: #067ec1;
     color: #FFF;
 }
 
@@ -87,11 +83,11 @@ nav.navbar.navbar-default {
 }
 
 .blue-bg {
-    background: #001746;
+    background: #067ec1;
 }
 
 .border-blue-bottom {
-    border-bottom: 3px solid #001746;
+    border-bottom: 3px solid #067ec1;
 }
 
 .full-height {

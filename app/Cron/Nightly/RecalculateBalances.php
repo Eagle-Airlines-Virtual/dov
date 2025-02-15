@@ -17,8 +17,6 @@ class RecalculateBalances extends Listener
 
     /**
      * Nightly constructor.
-     *
-     * @param JournalRepository $journalRepo
      */
     public function __construct(JournalRepository $journalRepo)
     {
@@ -28,7 +26,6 @@ class RecalculateBalances extends Listener
     /**
      * Recalculate all the balances for the different ledgers
      *
-     * @param CronNightly $event
      *
      * @throws \UnexpectedValueException
      * @throws \InvalidArgumentException
@@ -44,9 +41,11 @@ class RecalculateBalances extends Listener
             $this->journalRepo->recalculateBalance($journal);
             $journal->refresh();
 
-            Log::info('Adjusting balance on '.
-                $journal->morphed_type.':'.$journal->morphed_id
-                .' from '.$old_balance.' to '.$journal->balance);
+            if (!$journal->balance->equals($old_balance)) {
+                Log::info('Adjusting balance on '.
+                    $journal->morphed_type.':'.$journal->morphed_id
+                    .' from '.$old_balance.' to '.$journal->balance);
+            }
         }
 
         Log::info('Done calculating balances');

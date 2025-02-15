@@ -21,4 +21,6 @@ return [
     'accountsuspended'         => 'Compte suspendu',
     'suspendedmessage'         => 'Votre compte a été suspendu. Veuillez contacter un administrateur.',
     'transferhours'            => 'Heures transférées',
+    'loginwith'                => 'Se connecter avec :provider',
+    'sendresetlink'            => 'Envoyer le lien de réinitialisation du mot de passe',
 ];

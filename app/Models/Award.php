@@ -48,17 +48,17 @@ class Award extends Model
         'id',
         'name',
         'description',
+        'active',
+        'created_at',
     ];
 
     /**
      * Get the referring object
      *
-     * @param self      $award
-     * @param User|null $user
      *
      * @return null
      */
-    public function getReference(self $award = null, User $user = null)
+    public function getReference(?self $award = null, ?User $user = null)
     {
         if (!$this->ref_model) {
             return;

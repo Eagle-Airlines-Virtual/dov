@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Contracts\Controller;
 use App\Http\Requests\CreateAwardRequest;
 use App\Http\Requests\UpdateAwardRequest;
+use App\Models\UserAward;
 use App\Repositories\AwardRepository;
 use App\Services\AwardService;
 use Illuminate\Http\RedirectResponse;
@@ -17,19 +18,12 @@ class AwardController extends Controller
 {
     /**
      * AwardController constructor.
-     *
-     * @param AwardRepository $awardRepo
-     * @param AwardService    $awardSvc
      */
     public function __construct(
         private readonly AwardRepository $awardRepo,
         private readonly AwardService $awardSvc
-    ) {
-    }
+    ) {}
 
-    /**
-     * @return array
-     */
     protected function getAwardClassesAndDescriptions(): array
     {
         $awards = [
@@ -53,19 +47,23 @@ class AwardController extends Controller
     /**
      * Display a listing of the Fare.
      *
-     * @param Request $request
      *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
-     *
-     * @return View
      */
     public function index(Request $request): View
     {
         $this->awardRepo->pushCriteria(new RequestCriteria($request));
-        $awards = $this->awardRepo->all();
+        $awards = $this->awardRepo->sortable('name')->get();
+
+        $counts = [];
+
+        foreach ($awards as $aw) {
+            $counts[$aw->id] = UserAward::where('award_id', $aw->id)->count();
+        }
 
         return view('admin.awards.index', [
             'awards' => $awards,
+            'counts' => $counts,
         ]);
     }
 
@@ -85,11 +83,8 @@ class AwardController extends Controller
     /**
      * Store a newly created Fare in storage.
      *
-     * @param CreateAwardRequest $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function store(CreateAwardRequest $request): RedirectResponse
     {
@@ -102,10 +97,6 @@ class AwardController extends Controller
 
     /**
      * Display the specified Fare.
-     *
-     * @param int $id
-     *
-     * @return View
      */
     public function show(int $id): View
     {
@@ -123,10 +114,6 @@ class AwardController extends Controller
 
     /**
      * Show the form for editing the specified award.
-     *
-     * @param int $id
-     *
-     * @return RedirectResponse|View
      */
     public function edit(int $id): RedirectResponse|View
     {
@@ -139,22 +126,21 @@ class AwardController extends Controller
 
         $class_refs = $this->getAwardClassesAndDescriptions();
 
+        $owners = UserAward::with('user')->where('award_id', $id)->sortable(['created_at' => 'desc'])->get();
+
         return view('admin.awards.edit', [
             'award'              => $award,
             'award_classes'      => $class_refs['awards'],
             'award_descriptions' => $class_refs['descriptions'],
+            'owners'             => $owners,
         ]);
     }
 
     /**
      * Update the specified award in storage.
      *
-     * @param int                $id
-     * @param UpdateAwardRequest $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function update(int $id, UpdateAwardRequest $request): RedirectResponse
     {
@@ -173,10 +159,6 @@ class AwardController extends Controller
 
     /**
      * Remove the specified Fare from storage.
-     *
-     * @param int $id
-     *
-     * @return RedirectResponse
      */
     public function destroy(int $id): RedirectResponse
     {

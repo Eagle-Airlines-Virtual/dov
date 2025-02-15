@@ -16,8 +16,7 @@ class Pirep extends Resource
     /**
      * Transform the resource into an array.
      *
-     * @param \Illuminate\Http\Request $request
-     *
+     * @param  \Illuminate\Http\Request $request
      * @return array
      */
     public function toArray($request)
@@ -68,6 +67,7 @@ class Pirep extends Resource
             $res['block_off_time'] = $this->block_off_time->toIso8601ZuluString();
         }
 
+        $res['aircraft'] = new Aircraft($this->aircraft);
         $res['airline'] = new Airline($this->airline);
         $res['dpt_airport'] = new Airport($this->dpt_airport);
         $res['arr_airport'] = new Airport($this->arr_airport);

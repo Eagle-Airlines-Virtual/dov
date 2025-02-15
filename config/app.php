@@ -16,7 +16,7 @@ return [
     'debug_toolbar' => env('DEBUG_TOOLBAR', false),
 
     'locale'          => env('APP_LOCALE', 'en'),
-    'fallback_locale' => 'pt-br',
+    'fallback_locale' => 'en',
 
     //
     // Anything below here won't need changing and could break things
@@ -39,8 +39,7 @@ return [
         Prettus\Repository\Providers\RepositoryServiceProvider::class,
         Igaster\LaravelTheme\themeServiceProvider::class,
         Nwidart\Modules\LaravelModulesServiceProvider::class,
-
-        Tymon\JWTAuth\Providers\LaravelServiceProvider::class,
+        SocialiteProviders\Manager\ServiceProvider::class,
 
         /*
          * Application Service Providers...

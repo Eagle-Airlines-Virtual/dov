@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'none' => 'Es sind keine Downloads vorhanden!',
+    'none' => 'Es sind keine DownloadList vorhanden!',
 ];

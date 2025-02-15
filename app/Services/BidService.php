@@ -20,21 +20,16 @@ class BidService extends Service
     public function __construct(
         private readonly FareService $fareSvc,
         private readonly FlightService $flightSvc
-    ) {
-    }
+    ) {}
 
     /**
      * Get a specific bid for a user
-     *
-     * @param User $user
-     * @param      $bid_id
-     *
-     * @return Bid|null
      */
     public function getBid(User $user, $bid_id): ?Bid
     {
         $with = [
             'aircraft',
+            'aircraft.subfleet',
             'flight',
             'flight.fares',
             'flight.simbrief' => function ($query) use ($user) {
@@ -56,7 +51,12 @@ class BidService extends Service
 
         // Reconcile the aircraft for this bid
         // TODO: Only do this if there isn't a Simbrief attached?
-        $bid->flight = $this->flightSvc->filterSubfleets($user, $bid->flight);
+        if (!empty($bid->aircraft)) {
+            $bid->flight->subfleets = $this->flightSvc->getSubfleetsForBid($bid);
+        } else {
+            $bid->flight = $this->flightSvc->filterSubfleets($user, $bid->flight, $bid);
+        }
+
         $bid->flight = $this->fareSvc->getReconciledFaresForFlight($bid->flight);
 
         return $bid;
@@ -65,34 +65,51 @@ class BidService extends Service
     /**
      * Find all of the bids for a given user
      *
-     * @param \App\Models\User $user
      *
      * @return Bid[]
      */
-    public function findBidsForUser(User $user): Collection|array|null
+    public function findBidsForUser(User $user, array $relations = ['subfleets', 'simbrief_aircraft']): Collection|array|null
     {
         $with = [
             'aircraft',
             'flight',
+            'flight.airline',
             'flight.fares',
+            'flight.field_values',
             'flight.simbrief' => function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             },
-            'flight.simbrief.aircraft',
-            'flight.simbrief.aircraft.subfleet',
-            'flight.subfleets',
-            'flight.subfleets.aircraft',
-            'flight.subfleets.aircraft.bid',
-            'flight.subfleets.fares',
         ];
+
+        foreach ($relations as $relation) {
+            $with = array_merge($with, match ($relation) {
+                'subfleets' => [
+                    'flight.subfleets',
+                    'flight.subfleets.aircraft',
+                    'flight.subfleets.aircraft.bid',
+                    'flight.subfleets.fares',
+                ],
+                'simbrief_aircraft' => [
+                    'flight.simbrief.aircraft',
+                    'flight.simbrief.aircraft.subfleet',
+                    'flight.simbrief.aircraft.subfleet.fares',
+                ],
+                default => [],
+            });
+        }
 
         $bids = Bid::with($with)->where(['user_id' => $user->id])->get();
 
-        foreach ($bids as $bid) {
-            // if (empty($bid->flight->simbrief)) {
-            $bid->flight = $this->flightSvc->filterSubfleets($user, $bid->flight);
-            $bid->flight = $this->fareSvc->getReconciledFaresForFlight($bid->flight);
-            // }
+        if (in_array('subfleets', $relations, true)) {
+            foreach ($bids as $bid) {
+                if ($bid->aircraft) {
+                    $bid->flight->subfleets = $this->flightSvc->getSubfleetsForBid($bid);
+                } else {
+                    $bid->flight = $this->flightSvc->filterSubfleets($user, $bid->flight, $bid);
+                }
+
+                $bid->flight = $this->fareSvc->getReconciledFaresForFlight($bid->flight);
+            }
         }
 
         return $bids;
@@ -101,13 +118,10 @@ class BidService extends Service
     /**
      * Allow a user to bid on a flight. Check settings and all that good stuff
      *
-     * @param Flight    $flight
-     * @param User      $user
-     * @param ?Aircraft $aircraft
-     *
-     * @throws \App\Exceptions\BidExistsForFlight
      *
      * @return mixed
+     *
+     * @throws \App\Exceptions\BidExistsForFlight
      */
     public function addBid(Flight $flight, User $user, ?Aircraft $aircraft = null)
     {
@@ -181,9 +195,6 @@ class BidService extends Service
 
     /**
      * Remove a bid from a given flight
-     *
-     * @param Flight $flight
-     * @param User   $user
      */
     public function removeBid(Flight $flight, User $user)
     {
@@ -215,7 +226,6 @@ class BidService extends Service
     /**
      * If the setting is enabled, remove the bid
      *
-     * @param Pirep $pirep
      *
      * @throws \Exception
      */

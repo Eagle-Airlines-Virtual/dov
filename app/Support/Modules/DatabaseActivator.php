@@ -54,16 +54,12 @@ class DatabaseActivator implements ActivatorInterface
         $this->path = $path;
     }
 
-    /**
-     * @param string $name
-     *
-     * @return \App\Models\Module|null
-     */
     public function getModuleByName(string $name): ?\App\Models\Module
     {
         try {
             if (app()->environment('production')) {
                 $cache = config('cache.keys.MODULES');
+
                 return Cache::remember($cache['key'].'.'.$name, $cache['time'], function () use ($name) {
                     return \App\Models\Module::where(['name' => $name])->first();
                 });
@@ -77,23 +73,29 @@ class DatabaseActivator implements ActivatorInterface
 
     /**
      * Get modules statuses, from the database
-     *
-     * @return array
      */
     private function getModulesStatuses(): array
     {
         try {
             if (app()->environment('production')) {
                 $cache = config('cache.keys.MODULES');
-                $modules = Cache::remember($cache['key'], $cache['time'], function () {
-                    \App\Models\Module::all();
+                $retVal = Cache::remember($cache['key'], $cache['time'], function () {
+                    $modules = \App\Models\Module::select('name', 'enabled')->get();
+
+                    $retValCache = [];
+                    foreach ($modules as $i) {
+                        $retValCache[$i->name] = $i->enabled;
+                    }
+
+                    return $retValCache;
                 });
             } else {
-                $modules = \App\Models\Module::all();
-            }
-            $retVal = [];
-            foreach ($modules as $i) {
-                $retVal[$i->name] = $i->enabled;
+                $modules = \App\Models\Module::select('name', 'enabled')->get();
+
+                $retVal = [];
+                foreach ($modules as $i) {
+                    $retVal[$i->name] = $i->enabled;
+                }
             }
 
             return $retVal;
@@ -147,7 +149,9 @@ class DatabaseActivator implements ActivatorInterface
     {
         $module = $this->getModuleByName($module->getName());
         if (!$module) {
-            return;
+            $module = \App\Models\Module::create([
+                'name' => $module->name,
+            ]);
         }
 
         $module->enabled = $active;
@@ -181,6 +185,7 @@ class DatabaseActivator implements ActivatorInterface
             ])->delete();
         } catch (Exception $e) {
             Log::error('Module '.$module.' Delete failed! Exception : '.$e->getMessage());
+
             return;
         }
     }

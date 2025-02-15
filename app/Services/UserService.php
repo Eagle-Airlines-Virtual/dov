@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Contracts\Service;
-use App\Events\UserRegistered;
 use App\Events\UserStateChanged;
 use App\Events\UserStatsChanged;
 use App\Exceptions\PilotIdNotFound;
@@ -25,6 +24,9 @@ use App\Repositories\UserRepository;
 use App\Support\Units\Time;
 use App\Support\Utils;
 use Carbon\Carbon;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -33,34 +35,28 @@ use function is_array;
 
 class UserService extends Service
 {
-    /**
-     * @param AircraftRepository $aircraftRepo
-     * @param AirlineRepository  $airlineRepo
-     * @param FareService        $fareSvc
-     * @param SubfleetRepository $subfleetRepo
-     * @param UserRepository     $userRepo
-     */
     public function __construct(
         private readonly AircraftRepository $aircraftRepo,
         private readonly AirlineRepository $airlineRepo,
         private readonly FareService $fareSvc,
         private readonly SubfleetRepository $subfleetRepo,
         private readonly UserRepository $userRepo
-    ) {
-    }
+    ) {}
 
     /**
      * Find the user and return them with all of the data properly attached
-     *
-     * @param $user_id
-     *
-     * @return User|null
      */
-    public function getUser($user_id): ?User
+    public function getUser(int $user_id, bool $with_subfleets = true): ?User
     {
+        $with = ['airline', 'bids', 'rank'];
+
+        if ($with_subfleets) {
+            $with[] = 'rank.subfleets';
+        }
+
         /** @var User $user */
         $user = $this->userRepo
-            ->with(['airline', 'bids', 'rank'])
+            ->with($with)
             ->find($user_id);
 
         if (empty($user)) {
@@ -71,9 +67,11 @@ class UserService extends Service
             return null;
         }
 
-        // Load the proper subfleets to the rank
-        $user->rank->subfleets = $this->getAllowableSubfleets($user);
-        $user->subfleets = $user->rank->subfleets;
+        if ($with_subfleets) {
+            // Load the proper subfleets to the rank
+            $user->rank->subfleets = $this->getAllowableSubfleets($user);
+            $user->subfleets = $user->rank->subfleets;
+        }
 
         return $user;
     }
@@ -84,21 +82,17 @@ class UserService extends Service
      *
      * @param array $attrs Array with the user data
      * @param array $roles List of "display_name" of groups to assign
-     *
-     * @throws \Exception
-     *
-     * @return User
      */
-    public function createUser(array $attrs, array $roles = []): User
+    public function createUser(array $attrs, array $roles = [], ?int $state = null): User
     {
         $user = User::create($attrs);
         $user->api_key = Utils::generateApiKey();
         $user->curr_airport_id = $user->home_airport_id;
 
         // Determine if we want to auto accept
-        if (setting('pilots.auto_accept') === true) {
+        if ($state === null && setting('pilots.auto_accept') === true) {
             $user->state = UserState::ACTIVE;
-        } else {
+        } elseif ($state === null) {
             $user->state = UserState::PENDING;
         }
 
@@ -115,7 +109,7 @@ class UserService extends Service
         $this->calculatePilotRank($user);
         $user->refresh();
 
-        event(new UserRegistered($user));
+        event(new Registered($user));
 
         return $user;
     }
@@ -124,7 +118,6 @@ class UserService extends Service
      * Remove the user. But don't actually delete them - set the name to deleted, email to
      * something random
      *
-     * @param User $user
      *
      * @throws \Exception
      */
@@ -148,17 +141,12 @@ class UserService extends Service
             $user->state = UserState::DELETED;
             $user->save();
         } else {
-            $user->delete();
+            $user->forceDelete();
         }
     }
 
     /**
      * Add a user to a given role
-     *
-     * @param User   $user
-     * @param string $roleName
-     *
-     * @return User
      */
     public function addUserToRole(User $user, string $roleName): User
     {
@@ -170,21 +158,15 @@ class UserService extends Service
 
     /**
      * Find and return the next available pilot ID (usually just the max+1)
-     *
-     * @return int
      */
     public function getNextAvailablePilotId(): int
     {
-        return (int) User::max('pilot_id') + 1;
+        return (int) User::withTrashed()->max('pilot_id') + 1;
     }
 
     /**
      * Find the next available pilot ID and set the current user's pilot_id to that +1
      * Called from UserObserver right now after a record is created
-     *
-     * @param User $user
-     *
-     * @return User
      */
     public function findAndSetPilotId(User $user): User
     {
@@ -202,10 +184,6 @@ class UserService extends Service
 
     /**
      * Return true or false if a pilot ID already exists
-     *
-     * @param int $pilot_id
-     *
-     * @return bool
      */
     public function isPilotIdAlreadyUsed(int $pilot_id): bool
     {
@@ -215,12 +193,8 @@ class UserService extends Service
     /**
      * Change a user's pilot ID
      *
-     * @param User $user
-     * @param int  $pilot_id
      *
      * @throws UserPilotIdExists
-     *
-     * @return User
      */
     public function changePilotId(User $user, int $pilot_id): User
     {
@@ -245,10 +219,6 @@ class UserService extends Service
 
     /**
      * Split a given pilot ID into an airline and ID portions
-     *
-     * @param string $pilot_id
-     *
-     * @return User
      */
     public function findUserByPilotId(string $pilot_id): User
     {
@@ -336,11 +306,10 @@ class UserService extends Service
      * Return the subfleets this user is allowed access to,
      * based on their current Rank and/or by Type Rating
      *
-     * @param $user
      *
      * @return Collection
      */
-    public function getAllowableSubfleets($user)
+    public function getAllowableSubfleets($user, bool $paginate = false)
     {
         $restrict_rank = setting('pireps.restrict_aircraft_to_rank', true);
         $restrict_type = setting('pireps.restrict_aircraft_to_typerating', false);
@@ -362,14 +331,22 @@ class UserService extends Service
             $restrict_type = false;
         }
 
-        // @var Collection $subfleets
-        $subfleets = $this->subfleetRepo->when($restrict_rank || $restrict_type, function ($query) use ($restricted_to) {
+        $subfleetsQuery = $this->subfleetRepo->when($restrict_rank || $restrict_type, function ($query) use ($restricted_to) {
             return $query->whereIn('id', $restricted_to);
-        })->with('aircraft')->get();
+        })->with(['aircraft', 'aircraft.bid', 'fares']);
+
+        if ($paginate) {
+            /* @var Collection $subfleets */
+            $subfleets = $subfleetsQuery->paginate();
+        } else {
+            /* @var Collection $subfleets */
+            $subfleets = $subfleetsQuery->get();
+        }
 
         // Map the subfleets with the proper fare information
         return $subfleets->transform(function ($sf, $key) {
             $sf->fares = $this->fareSvc->getForSubfleet($sf);
+
             return $sf;
         });
     }
@@ -377,8 +354,6 @@ class UserService extends Service
     /**
      * Return a bool if a user is allowed to fly the current aircraft
      *
-     * @param $user
-     * @param $aircraft_id
      *
      * @return bool
      */
@@ -394,11 +369,6 @@ class UserService extends Service
     /**
      * Change the user's state. PENDING to ACCEPTED, etc
      * Send out an email
-     *
-     * @param User $user
-     * @param      $old_state
-     *
-     * @return User
      */
     public function changeUserState(User $user, $old_state): User
     {
@@ -416,11 +386,6 @@ class UserService extends Service
     /**
      * Adjust the number of flights a user has. Triggers
      * UserStatsChanged event
-     *
-     * @param User $user
-     * @param int  $count
-     *
-     * @return User
      */
     public function adjustFlightCount(User $user, int $count): User
     {
@@ -436,11 +401,6 @@ class UserService extends Service
 
     /**
      * Update a user's flight times
-     *
-     * @param User $user
-     * @param int  $minutes
-     *
-     * @return User
      */
     public function adjustFlightTime(User $user, int $minutes): User
     {
@@ -453,10 +413,6 @@ class UserService extends Service
 
     /**
      * See if a pilot's rank has change. Triggers the UserStatsChanged event
-     *
-     * @param User $user
-     *
-     * @return User
      */
     public function calculatePilotRank(User $user): User
     {
@@ -508,10 +464,6 @@ class UserService extends Service
 
     /**
      * Set the user's status to being on leave
-     *
-     * @param User $user
-     *
-     * @return User
      */
     public function setStatusOnLeave(User $user): User
     {
@@ -522,6 +474,7 @@ class UserService extends Service
         event(new UserStateChanged($user, UserState::ON_LEAVE));
 
         $user->refresh();
+
         return $user;
     }
 
@@ -543,10 +496,6 @@ class UserService extends Service
 
     /**
      * Recount/update all of the stats for a user
-     *
-     * @param User $user
-     *
-     * @return User
      */
     public function recalculateStats(User $user): User
     {
@@ -570,14 +519,12 @@ class UserService extends Service
         Log::info('User '.$user->ident.' updated; pirep count='.$pirep_count.', rank='.$user->rank->name.', flight_time='.$user->flight_time.' minutes');
 
         $user->save();
+
         return $user;
     }
 
     /**
      * Attach a type rating to the user
-     *
-     * @param User       $user
-     * @param Typerating $typerating
      */
     public function addUserToTypeRating(User $user, Typerating $typerating)
     {
@@ -590,9 +537,6 @@ class UserService extends Service
 
     /**
      * Detach a type rating from the user
-     *
-     * @param User       $user
-     * @param Typerating $typerating
      */
     public function removeUserFromTypeRating(User $user, Typerating $typerating)
     {
@@ -601,5 +545,34 @@ class UserService extends Service
         $user->refresh();
 
         return $user;
+    }
+
+    public function retrieveDiscordPrivateChannelId(User $user): void
+    {
+        if (is_null(config('services.discord.bot_token'))) {
+            return;
+        }
+
+        try {
+            $httpClient = new Client();
+
+            $response = $httpClient->post('https://discord.com/api/users/@me/channels', [
+                'headers' => [
+                    'Authorization' => 'Bot '.config('services.discord.bot_token'),
+                ],
+                'json' => [
+                    'recipient_id' => $user->discord_id,
+                ],
+            ]);
+
+            $privateChannel = json_decode($response->getBody()->getContents(), true, 512, JSON_THROW_ON_ERROR)['id'];
+            $user->update([
+                'discord_private_channel_id' => $privateChannel,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Discord OAuth Error: '.$e->getMessage());
+        } catch (GuzzleException $e) {
+            Log::error('Discord OAuth Error: '.$e->getMessage());
+        }
     }
 }

@@ -25,6 +25,8 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
 use Kleemans\AttributeEvents;
 use Kyslik\ColumnSortable\Sortable;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * @property string      id
@@ -78,8 +80,9 @@ use Kyslik\ColumnSortable\Sortable;
 class Pirep extends Model
 {
     use AttributeEvents;
-    use HashIdTrait;
     use HasFactory;
+    use HashIdTrait;
+    use LogsActivity;
     use Notifiable;
     use SoftDeletes;
     use Sortable;
@@ -188,6 +191,7 @@ class Pirep extends Model
         'landing_rate',
         'score',
         'flight_type',
+        'source',
         'state',
         'status',
         'submitted_at',
@@ -223,10 +227,6 @@ class Pirep extends Model
 
     /**
      * Create a new PIREP model from a given flight. Pre-populates the fields
-     *
-     * @param \App\Models\Flight $flight
-     *
-     * @return \App\Models\Pirep
      */
     public static function fromFlight(Flight $flight): self
     {
@@ -246,10 +246,6 @@ class Pirep extends Model
 
     /**
      * Create a new PIREP from a SimBrief instance
-     *
-     * @param \App\Models\SimBrief $simbrief
-     *
-     * @return \App\Models\Pirep
      */
     public static function fromSimBrief(SimBrief $simbrief): self
     {
@@ -327,7 +323,7 @@ class Pirep extends Model
     public function fields(): Attribute
     {
         return Attribute::make(get: function ($_, $attrs) {
-            $custom_fields = PirepField::all();
+            $custom_fields = PirepField::whereIn('pirep_source', [$this->source, PirepFieldSource::BOTH])->get();
             $field_values = PirepFieldValue::where('pirep_id', $this->id)->orderBy(
                 'created_at',
                 'asc'
@@ -355,8 +351,6 @@ class Pirep extends Model
 
     /**
      * Do some cleanup on the route
-     *
-     * @return Attribute
      */
     public function route(): Attribute
     {
@@ -373,8 +367,6 @@ class Pirep extends Model
 
     /**
      * Check if this PIREP is allowed to be updated
-     *
-     * @return bool
      */
     public function allowedUpdates(): bool
     {
@@ -383,10 +375,6 @@ class Pirep extends Model
 
     /**
      * Return a custom field value
-     *
-     * @param $field_name
-     *
-     * @return string
      */
     public function field($field_name): string
     {
@@ -396,6 +384,15 @@ class Pirep extends Model
         }
 
         return '';
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logExcept(['created_at', 'updated_at'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     /**

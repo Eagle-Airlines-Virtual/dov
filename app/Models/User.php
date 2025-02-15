@@ -16,8 +16,9 @@ use Illuminate\Notifications\Notifiable;
 use Kyslik\ColumnSortable\Sortable;
 use Laratrust\Contracts\LaratrustUser;
 use Laratrust\Traits\HasRolesAndPermissions;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
-use Tymon\JWTAuth\Contracts\JWTSubject;
 
 /**
  * @property int              id
@@ -31,11 +32,12 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
  * @property string           api_key
  * @property mixed            timezone
  * @property string           ident
+ * @property string           atc
  * @property string           curr_airport_id
  * @property string           home_airport_id
  * @property string           avatar
  * @property Airline          airline
- * @property Flight[]         flights
+ * @property int              flights
  * @property int              flight_time
  * @property int              transfer_time
  * @property string           remember_token
@@ -45,6 +47,8 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
  * @property Journal          journal
  * @property int              rank_id
  * @property string           discord_id
+ * @property string           vatsim_id
+ * @property string           ivao_id
  * @property int              state
  * @property string           last_ip
  * @property \Carbon\Carbon   lastlogin_at
@@ -53,23 +57,26 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
  * @property string           last_pirep_id
  * @property Pirep            last_pirep
  * @property UserFieldValue[] fields
+ * @property UserOAuthToken[] oauth_tokens
  * @property Role[]           roles
  * @property Subfleet[]       subfleets
  * @property TypeRating[]     typeratings
  * @property Airport          home_airport
  * @property Airport          current_airport
  * @property Airport          location
+ * @property Bid[]            bids
  *
  * @mixin \Illuminate\Database\Eloquent\Builder
  * @mixin \Illuminate\Notifications\Notifiable
  * @mixin \Laratrust\Traits\HasRolesAndPermissions
  */
-class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JWTSubject
+class User extends Authenticatable implements LaratrustUser, MustVerifyEmail
 {
     use HasFactory;
     use HasRelationships;
     use HasRolesAndPermissions;
     use JournalTrait;
+    use LogsActivity;
     use Notifiable;
     use SoftDeletes;
     use Sortable;
@@ -92,6 +99,8 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
         'rank_id',
         'discord_id',
         'discord_private_channel_id',
+        'vatsim_id',
+        'ivao_id',
         'api_key',
         'country',
         'home_airport_id',
@@ -121,7 +130,6 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
         'api_key',
         'email',
         'name',
-        'discord_id',
         'discord_private_channel_id',
         'password',
         'last_ip',
@@ -155,6 +163,7 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
     public $sortable = [
         'id',
         'name',
+        'email',
         'pilot_id',
         'callsign',
         'country',
@@ -166,12 +175,13 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
         'flight_time',
         'transfer_time',
         'created_at',
+        'state',
+        'vatsim_id',
+        'ivao_id',
     ];
 
     /**
      * Format the pilot ID/ident
-     *
-     * @return Attribute
      */
     public function ident(): Attribute
     {
@@ -188,9 +198,22 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
     }
 
     /**
+     * Format the pilot atc callsign, either return alphanumeric callsign or ident
+     */
+    public function atc(): Attribute
+    {
+        return Attribute::make(
+            get: function ($_, $attrs) {
+                $ident_code = filled(setting('pilots.id_code')) ? setting('pilots.id_code') : optional($this->airline)->icao;
+                $atc = filled($attrs['callsign']) ? $ident_code.$attrs['callsign'] : $ident_code.$attrs['pilot_id'];
+
+                return $atc;
+            }
+        );
+    }
+
+    /**
      * Return a "privatized" version of someones name - First and middle names full, last name initials
-     *
-     * @return Attribute
      */
     public function namePrivate(): Attribute
     {
@@ -220,8 +243,6 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
 
     /**
      * Shortcut for timezone
-     *
-     * @return Attribute
      */
     public function tz(): Attribute
     {
@@ -240,7 +261,7 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
     {
         return Attribute::make(
             get: function ($_, $attrs) {
-                if (!$attrs['avatar']) {
+                if (!array_key_exists('avatar', $attrs) || !$attrs['avatar']) {
                     return null;
                 }
 
@@ -252,8 +273,7 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
     }
 
     /**
-     * @param mixed $size Size of the gravatar, in pixels
-     *
+     * @param  mixed  $size Size of the gravatar, in pixels
      * @return string
      */
     public function gravatar($size = null)
@@ -280,6 +300,15 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
         return $avatar->url;
     }
 
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logExcept(array_merge($this->hidden, ['created_at', 'updated_at']))
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
+
     /**
      * Relationships
      */
@@ -290,7 +319,7 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
 
     public function awards(): BelongsToMany
     {
-        return $this->belongsToMany(Award::class, 'user_awards')->withTrashed();
+        return $this->belongsToMany(Award::class, 'user_awards')->withTimestamps()->withTrashed();
     }
 
     public function bids(): HasMany
@@ -323,6 +352,11 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
         return $this->hasMany(UserFieldValue::class, 'user_id');
     }
 
+    public function oauth_tokens(): HasMany
+    {
+        return $this->hasMany(UserOAuthToken::class, 'user_id');
+    }
+
     public function pireps(): HasMany
     {
         return $this->hasMany(Pirep::class, 'user_id');
@@ -341,15 +375,5 @@ class User extends Authenticatable implements LaratrustUser, MustVerifyEmail, JW
     public function rated_subfleets()
     {
         return $this->hasManyDeep(Subfleet::class, ['typerating_user', Typerating::class, 'typerating_subfleet']);
-    }
-
-    public function getJWTIdentifier()
-    {
-        return $this->getKey();
-    }
-
-    public function getJWTCustomClaims(): array
-    {
-        return [];
     }
 }

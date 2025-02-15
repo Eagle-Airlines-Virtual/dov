@@ -13,21 +13,16 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Laracasts\Flash\Flash;
+use League\ISO3166\ISO3166;
 use Prettus\Repository\Criteria\RequestCriteria;
 
 class AirlinesController extends Controller
 {
-    /**
-     * @param AirlineRepository $airlineRepo
-     * @param AirlineService    $airlineSvc
-     * @param FileService       $fileSvc
-     */
     public function __construct(
         private readonly AirlineRepository $airlineRepo,
         private readonly AirlineService $airlineSvc,
         private readonly FileService $fileSvc
-    ) {
-    }
+    ) {}
 
     /**
      * Display a listing of the Airlines.
@@ -37,10 +32,11 @@ class AirlinesController extends Controller
     public function index(Request $request): View
     {
         $this->airlineRepo->pushCriteria(new RequestCriteria($request));
-        $airlines = $this->airlineRepo->orderby('name', 'asc')->get();
+        $airlines = $this->airlineRepo->sortable('name')->get();
 
         return view('admin.airlines.index', [
             'airlines' => $airlines,
+            'country'  => new ISO3166(),
         ]);
     }
 
@@ -65,13 +61,13 @@ class AirlinesController extends Controller
         $this->airlineSvc->createAirline($input);
 
         Flash::success('Airlines saved successfully.');
+
         return redirect(route('admin.airlines.index'));
     }
 
     /**
      * Display the specified Airlines.
      *
-     * @param int $id
      *
      * @return mixed
      */
@@ -81,6 +77,7 @@ class AirlinesController extends Controller
 
         if (empty($airlines)) {
             Flash::error('Airlines not found');
+
             return redirect(route('admin.airlines.index'));
         }
 
@@ -91,10 +88,6 @@ class AirlinesController extends Controller
 
     /**
      * Show the form for editing the specified Airlines.
-     *
-     * @param int $id
-     *
-     * @return View
      */
     public function edit(int $id): View
     {
@@ -102,6 +95,7 @@ class AirlinesController extends Controller
 
         if (empty($airline)) {
             Flash::error('Airline not found');
+
             return redirect(route('admin.airlines.index'));
         }
 
@@ -114,12 +108,8 @@ class AirlinesController extends Controller
     /**
      * Update the specified Airlines in storage.
      *
-     * @param int                  $id
-     * @param UpdateAirlineRequest $request
      *
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function update(int $id, UpdateAirlineRequest $request): RedirectResponse
     {
@@ -127,21 +117,19 @@ class AirlinesController extends Controller
 
         if (empty($airlines)) {
             Flash::error('Airlines not found');
+
             return redirect(route('admin.airlines.index'));
         }
 
         $airlines = $this->airlineRepo->update($request->all(), $id);
 
         Flash::success('Airlines updated successfully.');
+
         return redirect(route('admin.airlines.index'));
     }
 
     /**
      * Remove the specified Airlines from storage.
-     *
-     * @param int $id
-     *
-     * @return RedirectResponse
      */
     public function destroy(int $id): RedirectResponse
     {
@@ -149,11 +137,13 @@ class AirlinesController extends Controller
 
         if (empty($airline)) {
             Flash::error('Airlines not found');
+
             return redirect(route('admin.airlines.index'));
         }
 
         if (!$this->airlineSvc->canDeleteAirline($airline)) {
             Flash::error('Airlines cannot be deleted; flights/PIREPs/subfleets exist');
+
             return redirect(route('admin.airlines.index'));
         }
 
@@ -164,6 +154,7 @@ class AirlinesController extends Controller
         $this->airlineRepo->delete($id);
 
         Flash::success('Airlines deleted successfully.');
+
         return redirect(route('admin.airlines.index'));
     }
 }

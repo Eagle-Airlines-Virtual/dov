@@ -44,11 +44,6 @@ return [
             'driver'   => 'token',
             'provider' => 'users',
         ],
-
-        'pilot' => [
-            'driver'   => 'jwt',
-            'provider' => 'users',
-        ],
     ],
 
     'providers' => [

@@ -58,6 +58,16 @@ return [
     'simbrief_update_url' => 'https://www.simbrief.com/api/xml.fetcher.php?userid={sb_user_id}&static_id={sb_static_id}',
 
     /*
+     * URL for fetching Simbrief aircraft and airframe data
+     */
+    'simbrief_airframes_url' => 'https://www.simbrief.com/api/inputs.airframes.json',
+
+    /*
+     * URL for fetching Simbrief layouts data
+     */
+    'simbrief_layouts_url' => 'https://www.simbrief.com/api/inputs.list.json',
+
+    /*
      * Your vaCentral API key
      */
     'vacentral_api_key' => env('VACENTRAL_API_KEY', ''),
@@ -81,6 +91,11 @@ return [
      * The URL to download the latest phpVMS version from
      */
     'distrib_url' => 'http://downloads.phpvms.net/phpvms-{VERSION}.zip',
+
+    /**
+     * The URL to download the latest TLD list
+     */
+    'tld_list_url' => 'https://publicsuffix.org/list/public_suffix_list.dat',
 
     /*
      * Where the KVP file is stored
@@ -124,6 +139,6 @@ return [
      * Enable/disable email verification on registration
      */
     'registration' => [
-        'email_verification' => true,
+        'email_verification' => env('EMAIL_VERIFICATION_REQUIRED', true),
     ],
 ];

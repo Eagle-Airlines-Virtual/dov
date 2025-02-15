@@ -1,4 +1,5 @@
 {
-  "name": "eagleair",
-  "parent_theme": null
+    "name": "eagleair",
+    "parent_theme": null,
+    "extends": "beta"
 }

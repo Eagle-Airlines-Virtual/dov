@@ -17,15 +17,13 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 
-class UserTest extends TestCase
+final class UserTest extends TestCase
 {
-    /** @var SettingRepository */
-    protected $settingsRepo;
+    protected SettingRepository $settingsRepo;
 
-    /** @var UserService */
-    protected $userSvc;
+    protected UserService $userSvc;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $this->userSvc = app(UserService::class);
@@ -36,7 +34,7 @@ class UserTest extends TestCase
      * Makes sure that the subfleet/aircraft returned are allowable
      * by the users rank.
      */
-    public function testRankSubfleets()
+    public function test_rank_subfleets(): void
     {
         // Add subfleets and aircraft, but also add another
         // set of subfleets
@@ -93,7 +91,7 @@ class UserTest extends TestCase
      *
      * @throws \Exception
      */
-    public function testGetAllAircraft()
+    public function test_get_all_aircraft(): void
     {
         $fare_svc = app(FareService::class);
 
@@ -153,18 +151,6 @@ class UserTest extends TestCase
         $subfleetAFromApi = collect($body)->firstWhere('id', $subfleetA['subfleet']->id);
         $this->assertEquals($subfleetAFromApi['fares'][0]['price'], $overrides['price']);
         $this->assertEquals($subfleetAFromApi['fares'][0]['capacity'], $overrides['capacity']);
-
-        // Read the user's profile and make sure that subfleet C is not part of this
-        // Should only return a single subfleet (subfleet A)
-        $resp = $this->get('/api/user', [], $user);
-        $resp->assertStatus(200);
-
-        $body = $resp->json('data');
-        $subfleets = $body['rank']['subfleets'];
-
-        $this->assertEquals(1, count($subfleets));
-        $this->assertEquals($subfleets[0]['fares'][0]['price'], $overrides['price']);
-        $this->assertEquals($subfleets[0]['fares'][0]['capacity'], $overrides['capacity']);
     }
 
     /**
@@ -173,7 +159,7 @@ class UserTest extends TestCase
      * assign only one of them to the user's rank. When calling the api
      * to retrieve the flight, only subfleetA should be showing
      */
-    public function testGetAircraftAllowedFromFlight()
+    public function test_get_aircraft_allowed_from_flight()
     {
         // Add subfleets and aircraft, but also add another
         // set of subfleets
@@ -239,7 +225,7 @@ class UserTest extends TestCase
     /**
      * Test the pilot ID being added when a new user is created
      */
-    public function testUserPilotIdChangeAlreadyExists()
+    public function test_user_pilot_id_change_already_exists()
     {
         $this->expectException(UserPilotIdExists::class);
         $user1 = User::factory()->create(['id' => 1]);
@@ -252,7 +238,7 @@ class UserTest extends TestCase
     /**
      * Make sure that the splitting of the user ID works
      */
-    public function testUserPilotIdSplit(): void
+    public function test_user_pilot_id_split(): void
     {
         /** @var User $user */
         $user = User::factory()->create();
@@ -267,7 +253,7 @@ class UserTest extends TestCase
     /**
      * Pilot ID not found
      */
-    public function testUserPilotIdSplitInvalidId(): void
+    public function test_user_pilot_id_split_invalid_id(): void
     {
         /** @var User $user */
         $user = User::factory()->create();
@@ -276,7 +262,7 @@ class UserTest extends TestCase
         $this->userSvc->findUserByPilotId($user->airline->iata);
     }
 
-    public function testUserPilotIdInvalidIATA(): void
+    public function test_user_pilot_id_invalid_iata(): void
     {
         /** @var Airline $airline */
         $airline = Airline::factory()->create(['icao' => 'ABC', 'iata' => null]);
@@ -291,7 +277,7 @@ class UserTest extends TestCase
     /**
      * Test the pilot ID being added when a new user is created
      */
-    public function testUserPilotIdAdded()
+    public function test_user_pilot_id_added()
     {
         $new_user = User::factory()->make()->makeVisible(['api_key', 'name', 'email'])->toArray();
         $new_user['password'] = Hash::make('secret');
@@ -313,7 +299,7 @@ class UserTest extends TestCase
         $this->assertEquals(4, $user3->pilot_id);
     }
 
-    public function testUserPilotDeleted()
+    public function test_user_pilot_deleted()
     {
         $new_user = User::factory()->make()->makeVisible(['api_key', 'name', 'email'])->toArray();
         $new_user['password'] = Hash::make('secret');
@@ -335,7 +321,7 @@ class UserTest extends TestCase
         $this->assertNull($user);
     }
 
-    public function testUserPilotDeletedWithPireps()
+    public function test_user_pilot_deleted_with_pireps()
     {
         $new_user = User::factory()->make()->makeVisible(['api_key', 'name', 'email'])->toArray();
         $new_user['password'] = Hash::make('secret');
@@ -366,7 +352,7 @@ class UserTest extends TestCase
     /**
      * Test that a user's name is private
      */
-    public function testUserNamePrivate()
+    public function test_user_name_private()
     {
         $vals = [
             'Firstname'                     => 'Firstname',
@@ -384,7 +370,7 @@ class UserTest extends TestCase
     /**
      * @throws \Exception
      */
-    public function testUserLeave(): void
+    public function test_user_leave(): void
     {
         $this->createUser(['status' => UserState::ACTIVE]);
 
@@ -450,7 +436,7 @@ class UserTest extends TestCase
         $this->assertCount(0, $users_on_leave);
     }
 
-    public function testEventCalledWhenProfileUpdated()
+    public function test_event_called_when_profile_updated()
     {
         Event::fake();
         $user = User::factory()->create();

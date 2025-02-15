@@ -11,14 +11,20 @@ class SetActiveLanguage
     /**
      * Handle an incoming request.
      *
-     * @param \Illuminate\Http\Request                                                                          $request
-     * @param \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse) $next
-     *
+     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse) $next
      * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
      */
     public function handle(Request $request, Closure $next)
     {
-        App::setLocale($request->cookie('lang', config('app.locale', 'en')));
+        $preferredLanguage = 'en';
+        if (setting('general.auto_language_detection', false) && !$request->hasCookie('lang')) {
+            $preferredLanguage = $request->getPreferredLanguage(array_keys(config('languages')));
+        } else {
+            $preferredLanguage = $request->cookie('lang', config('app.locale', 'en'));
+        }
+
+        App::setLocale($preferredLanguage);
+
         return $next($request);
     }
 }

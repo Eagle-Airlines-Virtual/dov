@@ -1,28 +1,14 @@
-FROM php:8.1-fpm-alpine3.15
+# This Dockerfile is used to create the base phpVMS image for Docker in production.
+# It is based on https://serversideup.net/open-source/docker-php/.
+FROM composer:latest AS vendor
 
-WORKDIR /var/www/
+LABEL org.opencontainers.image.description="The official phpVMS image"
 
-# Setup composer
-COPY --from=composer:2.2.7 /usr/bin/composer /usr/local/bin/composer
+COPY composer.json composer.json
+COPY composer.lock composer.lock
 
-RUN apk add gmp-dev icu-dev zlib-dev libpng-dev libzip-dev zip
+COPY app/Database app/Database
 
-# Copy any config files in
-COPY resources/docker/php/ext-opcache.ini $PHP_INI_DIR/conf.d/
-COPY resources/docker/php/www.conf /usr/local/etc/php-fpm.d/www.conf
-
-RUN docker-php-ext-install \
-  calendar \
-  intl \
-  pdo_mysql \
-  gd \
-  gmp \
-  bcmath \
-  opcache \
-  zip && \
-  docker-php-ext-enable pdo_mysql opcache bcmath zip intl
-
-COPY . /var/www/
 RUN composer install \
     --ignore-platform-reqs \
     --no-interaction \
@@ -30,6 +16,34 @@ RUN composer install \
     --no-scripts \
     --prefer-dist
 
-#RUN chown -R www-data:www-data /var/www
+FROM serversideup/php:8.3-fpm
 
-EXPOSE 9000
+ARG WWWUSER=1000
+ARG WWWGROUP=1000
+
+# Switch to root so we can do root things
+USER root
+
+# Install missing extensions with root permissions
+RUN install-php-extensions intl bcmath
+
+# Install mariadb client (required for backups)
+RUN apt-get update; \
+        apt-get upgrade -yqq; \
+        apt-get install -yqq --no-install-recommends --show-progress \
+        mariadb-client
+
+# Deal with permissions
+RUN usermod -ou $WWWUSER www-data \
+    && groupmod -og $WWWGROUP www-data
+
+# Drop back to our unprivileged user
+USER www-data
+
+# Copy application files
+COPY --chown=www-data:www-data . /var/www/html
+
+COPY --chmod=755 ./resources/docker/run-dump-autoload.sh /etc/entrypoint.d/20-run-dump-autoload.sh
+
+# Copy deps from the composer build stage
+COPY --chown=www-data:www-data --from=vendor /app/vendor/ /var/www/html/vendor/

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Contracts\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * @property string id
@@ -18,9 +20,12 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
  */
 class Setting extends Model
 {
+    use LogsActivity;
+
     public $table = 'settings';
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -39,11 +44,6 @@ class Setting extends Model
         'group' => 'required',
     ];
 
-    /**
-     * @param $key
-     *
-     * @return string
-     */
     public static function formatKey($key): string
     {
         return str_replace('.', '_', strtolower($key));
@@ -51,8 +51,6 @@ class Setting extends Model
 
     /**
      * Force formatting the key
-     *
-     * @return Attribute
      */
     public function id(): Attribute
     {
@@ -63,13 +61,19 @@ class Setting extends Model
 
     /**
      * Set the key to lowercase
-     *
-     * @return Attribute
      */
     public function key(): Attribute
     {
         return Attribute::make(
             set: fn ($key) => strtolower($key)
         );
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }

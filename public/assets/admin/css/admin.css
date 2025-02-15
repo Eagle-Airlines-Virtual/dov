@@ -3,10 +3,6 @@
  *
  */
 
- nav.navbar.navbar-default {
-    background-color: #001746!important;
-}
-
 .form-container {
     font-weight: normal;
 }
@@ -20,7 +16,7 @@ textarea.input-text {
 }
 
 .border-blue-bottom {
-    border-bottom: 3px solid #001746;
+    border-bottom: 3px solid #067ec1;
 }
 
 @media (min-width: 992px) {

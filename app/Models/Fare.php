@@ -6,6 +6,8 @@ use App\Contracts\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * @property string  name
@@ -21,6 +23,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Fare extends Model
 {
     use HasFactory;
+    use LogsActivity;
     use SoftDeletes;
 
     public $table = 'fares';
@@ -52,6 +55,14 @@ class Fare extends Model
         'name' => 'required',
         'type' => 'required',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly($this->fillable)
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     /**
      * Relationships

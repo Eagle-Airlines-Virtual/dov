@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Frontend;
 use App\Contracts\Controller;
 use App\Http\Requests\CreatePirepRequest;
 use App\Http\Requests\UpdatePirepRequest;
+use App\Models\Enums\PirepFieldSource;
 use App\Models\Enums\PirepSource;
 use App\Models\Enums\PirepState;
 use App\Models\Fare;
@@ -36,18 +37,6 @@ use Laracasts\Flash\Flash;
 
 class PirepController extends Controller
 {
-    /**
-     * @param AircraftRepository   $aircraftRepo
-     * @param AirlineRepository    $airlineRepo
-     * @param AirportRepository    $airportRepo
-     * @param FareService          $fareSvc
-     * @param FlightRepository     $flightRepo
-     * @param GeoService           $geoSvc
-     * @param PirepRepository      $pirepRepo
-     * @param PirepFieldRepository $pirepFieldRepo
-     * @param PirepService         $pirepSvc
-     * @param UserService          $userSvc
-     */
     public function __construct(
         private readonly AircraftRepository $aircraftRepo,
         private readonly AirlineRepository $airlineRepo,
@@ -59,15 +48,10 @@ class PirepController extends Controller
         private readonly PirepFieldRepository $pirepFieldRepo,
         private readonly PirepService $pirepSvc,
         private readonly UserService $userSvc
-    ) {
-    }
+    ) {}
 
     /**
      * Dropdown with aircraft grouped by subfleet
-     *
-     * @param bool $add_blank
-     *
-     * @return array
      */
     public function aircraftList(bool $add_blank = false): array
     {
@@ -83,6 +67,8 @@ class PirepController extends Controller
         if ($add_blank) {
             $aircraft[''] = '';
         }
+
+        $subfleets->loadMissing('aircraft');
 
         foreach ($subfleets as $subfleet) {
             $tmp = [];
@@ -100,15 +86,11 @@ class PirepController extends Controller
 
     /**
      * Save any custom fields found
-     *
-     * @param Request $request
-     *
-     * @return array
      */
     protected function saveCustomFields(Request $request): array
     {
         $fields = [];
-        $pirep_fields = $this->pirepFieldRepo->all();
+        $pirep_fields = $this->pirepFieldRepo->whereIn('pirep_source', [PirepFieldSource::MANUAL, PirepFieldSource::BOTH])->get();
         foreach ($pirep_fields as $field) {
             if (!$request->filled($field->slug)) {
                 continue;
@@ -130,12 +112,8 @@ class PirepController extends Controller
     /**
      * Save the fares that have been specified/saved
      *
-     * @param Pirep   $pirep
-     * @param Request $request
      *
      * @throws \Exception
-     *
-     * @return void
      */
     protected function saveFares(Pirep $pirep, Request $request): void
     {
@@ -162,11 +140,7 @@ class PirepController extends Controller
     }
 
     /**
-     * @param Request $request
-     *
      * @throws \Prettus\Repository\Exceptions\RepositoryException
-     *
-     * @return View
      */
     public function index(Request $request): View
     {
@@ -202,11 +176,6 @@ class PirepController extends Controller
         ]);
     }
 
-    /**
-     * @param string $id
-     *
-     * @return RedirectResponse|View
-     */
     public function show(string $id): RedirectResponse|View
     {
         // Support retrieval of deleted relationships
@@ -255,10 +224,6 @@ class PirepController extends Controller
 
     /**
      * Return the fares form for a given aircraft
-     *
-     * @param Request $request
-     *
-     * @return View
      */
     public function fares(Request $request): View
     {
@@ -273,10 +238,6 @@ class PirepController extends Controller
 
     /**
      * Create a new flight report
-     *
-     * @param \Illuminate\Http\Request $request
-     *
-     * @return View
      */
     public function create(Request $request): View
     {
@@ -321,6 +282,8 @@ class PirepController extends Controller
             $aircraft_list = $this->aircraftList(true);
         }
 
+        $pirep_source = filled(optional($pirep)->source) ? $pirep->source : PirepSource::MANUAL;
+
         return view('pireps.create', [
             'aircraft'      => $aircraft,
             'pirep'         => $pirep,
@@ -328,7 +291,7 @@ class PirepController extends Controller
             'airline_list'  => $this->airlineRepo->selectBoxList(true),
             'aircraft_list' => $aircraft_list,
             'airport_list'  => [], // $this->airportRepo->selectBoxList(true),
-            'pirep_fields'  => $this->pirepFieldRepo->all(),
+            'pirep_fields'  => $this->pirepFieldRepo->whereIn('pirep_source', [$pirep_source, PirepFieldSource::BOTH])->get(),
             'field_values'  => [],
             'fare_values'   => $fare_values,
             'simbrief_id'   => $simbrief_id,
@@ -337,11 +300,7 @@ class PirepController extends Controller
     }
 
     /**
-     * @param CreatePirepRequest $request
-     *
      * @throws \Exception
-     *
-     * @return RedirectResponse
      */
     public function store(CreatePirepRequest $request): RedirectResponse
     {
@@ -474,10 +433,6 @@ class PirepController extends Controller
 
     /**
      * Show the form for editing the specified Pirep.
-     *
-     * @param string $id
-     *
-     * @return RedirectResponse|View
      */
     public function edit(string $id): RedirectResponse|View
     {
@@ -529,13 +484,13 @@ class PirepController extends Controller
         }
 
         $airports = [
-            ['' => ''],
-            [$pirep->arr_airport->id => $pirep->arr_airport->full_name],
-            [$pirep->dpt_airport->id => $pirep->dpt_airport->full_name],
+            ''                      => '',
+            $pirep->arr_airport->id => $pirep->arr_airport->full_name,
+            $pirep->dpt_airport->id => $pirep->dpt_airport->full_name,
         ];
 
         if ($pirep->alt_airport) {
-            $airports[] = [$pirep->alt_airport->id => $pirep->alt_airport->full_name];
+            $airports[$pirep->alt_airport->id] = $pirep->alt_airport->full_name;
         }
 
         return view('pireps.edit', [
@@ -544,19 +499,14 @@ class PirepController extends Controller
             'aircraft_list' => $this->aircraftList(true),
             'airline_list'  => $this->airlineRepo->selectBoxList(),
             'airport_list'  => $airports,
-            'pirep_fields'  => $this->pirepFieldRepo->all(),
+            'pirep_fields'  => $this->pirepFieldRepo->whereIn('pirep_source', [$pirep->source, PirepFieldSource::BOTH])->get(),
             'simbrief_id'   => $simbrief_id,
         ]);
     }
 
     /**
-     * @param string             $id
-     * @param UpdatePirepRequest $request
-     *
      * @throws \Exception
      * @throws \Prettus\Validator\Exceptions\ValidatorException
-     *
-     * @return RedirectResponse
      */
     public function update(string $id, UpdatePirepRequest $request): RedirectResponse
     {
@@ -616,12 +566,8 @@ class PirepController extends Controller
     /**
      * Submit the PIREP
      *
-     * @param string  $id
-     * @param Request $request
      *
      * @throws \Exception
-     *
-     * @return RedirectResponse
      */
     public function submit(string $id, Request $request): RedirectResponse
     {

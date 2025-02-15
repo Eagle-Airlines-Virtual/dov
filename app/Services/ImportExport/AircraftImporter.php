@@ -9,6 +9,7 @@ use App\Models\Enums\AircraftState;
 use App\Models\Enums\AircraftStatus;
 use App\Models\Subfleet;
 use App\Support\ICAO;
+use App\Support\Units\Mass;
 
 /**
  * Import aircraft
@@ -22,25 +23,28 @@ class AircraftImporter extends ImportExport
      * Should match the database fields, for the most part
      */
     public static $columns = [
-        'subfleet'     => 'required',
-        'iata'         => 'nullable',
-        'icao'         => 'nullable',
-        'hub_id'       => 'nullable',
-        'airport_id'   => 'nullable',
-        'name'         => 'required',
-        'registration' => 'required',
-        'fin'          => 'nullable',
-        'hex_code'     => 'nullable',
-        'mtow'         => 'nullable|numeric',
-        'zfw'          => 'nullable|numeric',
-        'status'       => 'nullable',
+        'subfleet'      => 'required',
+        'iata'          => 'nullable',
+        'icao'          => 'nullable',
+        'hub_id'        => 'nullable',
+        'airport_id'    => 'nullable',
+        'name'          => 'required',
+        'registration'  => 'required',
+        'fin'           => 'nullable',
+        'hex_code'      => 'nullable',
+        'selcal'        => 'nullable',
+        'dow'           => 'nullable|numeric',
+        'zfw'           => 'nullable|numeric',
+        'mtow'          => 'nullable|numeric',
+        'mlw'           => 'nullable|numeric',
+        'status'        => 'nullable',
+        'simbrief_type' => 'nullable',
     ];
 
     /**
      * Find the subfleet specified, or just create it on the fly and attach it to the
      * first airline that's been found
      *
-     * @param $type
      *
      * @return Subfleet|\Illuminate\Database\Eloquent\Model|null|object|static
      */
@@ -57,12 +61,9 @@ class AircraftImporter extends ImportExport
     /**
      * Import an aircraft, parse out the different rows
      *
-     * @param array $row
-     * @param int   $index
+     * @param int $index
      *
      * @throws \Exception
-     *
-     * @return bool
      */
     public function import(array $row, $index): bool
     {
@@ -83,17 +84,39 @@ class AircraftImporter extends ImportExport
         // Just set its state right now as parked
         $row['state'] = AircraftState::PARKED;
 
+        // Check fields and set to null if they are blank
+        // Somehow they got empty strings instead of null without this!
+        $row['fin'] = blank($row['fin']) ? null : $row['fin'];
+        $row['selcal'] = blank($row['selcal']) ? null : $row['selcal'];
+        $row['simbrief_type'] = blank($row['simbrief_type']) ? null : $row['simbrief_type'];
+        // Set the correct mass units
+        $row['dow'] = $this->CorrectMassUnit($row['dow']);
+        $row['zfw'] = $this->CorrectMassUnit($row['zfw']);
+        $row['mtow'] = $this->CorrectMassUnit($row['mtow']);
+        $row['mlw'] = $this->CorrectMassUnit($row['mlw']);
+
         // Try to add or update
         try {
             Aircraft::updateOrCreate([
                 'registration' => $row['registration'],
             ], $row);
         } catch (\Exception $e) {
-            $this->errorLog('Error in row '.$index.': '.$e->getMessage());
+            $this->errorLog('Error in row '.($index + 1).': '.$e->getMessage());
+
             return false;
         }
 
         $this->log('Imported '.$row['registration'].' '.$row['name']);
+
         return true;
+    }
+
+    public function CorrectMassUnit($value)
+    {
+        if ($value > 0) {
+            return Mass::make((float) $value, setting('units.weight'));
+        }
+
+        return null;
     }
 }

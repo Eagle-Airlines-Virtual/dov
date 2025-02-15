@@ -11,14 +11,13 @@ use App\Services\PirepService;
 use Modules\Awards\Awards\FlightRouteAwards;
 use Modules\Awards\Awards\PilotFlightAwards;
 
-class AwardsTest extends TestCase
+final class AwardsTest extends TestCase
 {
-    /** @var AwardService */
-    private $awardSvc;
+    private AwardService $awardSvc;
 
-    private $pirepSvc;
+    private PirepService $pirepSvc;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $this->addData('base');
@@ -30,7 +29,7 @@ class AwardsTest extends TestCase
     /**
      * Make sure the awards classes are returned
      */
-    public function testGetAwardsClasses()
+    public function test_get_awards_classes(): void
     {
         $classes = $this->awardSvc->findAllAwardClasses();
         $this->assertGreaterThanOrEqual(2, $classes);
@@ -38,8 +37,10 @@ class AwardsTest extends TestCase
 
     /**
      * Test to make sure that the award is actually given out
+     *
+     * @throws \Exception
      */
-    public function testAwardsGiven()
+    public function test_awards_given(): void
     {
         // Create one award that's given out with one flight
         $award = Award::factory()->create([
@@ -74,7 +75,7 @@ class AwardsTest extends TestCase
     /**
      * Test the flight route
      */
-    public function testFlightRouteAward()
+    public function test_flight_route_award(): void
     {
         /** @var \App\Models\User $user */
         $user = User::factory()->create([

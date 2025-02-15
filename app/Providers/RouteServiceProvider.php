@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\EnableActivityLogging;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -139,7 +140,7 @@ class RouteServiceProvider extends ServiceProvider
                 // SimBrief stuff
                 Route::get('simbrief/generate', 'SimBriefController@generate')->name('simbrief.generate');
                 Route::post('simbrief/apicode', 'SimBriefController@api_code')->name('simbrief.api_code');
-                Route::get('simbrief/check_ofp', 'SimBriefController@check_ofp')->name('simbrief.check_ofp');
+                Route::get('simbrief/check_ofp', 'SimBriefController@check_ofp')->name('simbrief.check_ofp')->middleware('throttle:10,1');
                 Route::get('simbrief/update_ofp', 'SimBriefController@update_ofp')->name('simbrief.update_ofp');
                 Route::get('simbrief/{id}', 'SimBriefController@briefing')->name('simbrief.briefing');
                 Route::get('simbrief/{id}/prefile', 'SimBriefController@prefile')->name('simbrief.prefile');
@@ -169,6 +170,18 @@ class RouteServiceProvider extends ServiceProvider
                 Route::get('livemap', 'LiveMapController@index')->name('livemap.index');
 
                 Route::get('lang/{lang}', 'LanguageController@switchLang')->name('lang.switch');
+
+                Route::get('credits', 'CreditsController@index')->name('credits');
+            });
+
+            Route::group([
+                'namespace' => 'Auth',
+                'prefix'    => 'oauth',
+                'as'        => 'oauth.',
+            ], function () {
+                Route::get('{provider}/redirect', 'OAuthController@redirectToProvider')->name('redirect');
+                Route::get('{provider}/callback', 'OAuthController@handleProviderCallback')->name('callback');
+                Route::get('{provider}/logout', 'OAuthController@logoutProvider')->name('logout')->middleware('auth');
             });
 
             Route::get('/logout', 'Auth\LoginController@logout')->name('auth.logout');
@@ -182,7 +195,7 @@ class RouteServiceProvider extends ServiceProvider
             'namespace'  => $this->namespace.'\\Admin',
             'prefix'     => 'admin',
             'as'         => 'admin.',
-            'middleware' => ['web', 'auth', 'ability:admin,admin-access'],
+            'middleware' => ['web', 'auth', 'ability:admin,admin-access', EnableActivityLogging::class],
         ], static function () {
             // CRUD for airlines
             Route::resource('airlines', 'AirlinesController')
@@ -243,8 +256,8 @@ class RouteServiceProvider extends ServiceProvider
             ], 'aircraft/{id}/expenses', 'AircraftController@expenses')
                 ->middleware('ability:admin,aircraft');
 
-            Route::resource('aircraft', 'AircraftController')
-                ->middleware('ability:admin,aircraft');
+            Route::resource('aircraft', 'AircraftController')->middleware('ability:admin,aircraft');
+            Route::post('aircraft/trashbin', 'AircraftController@trashbin')->name('aircraft.trashbin')->middleware('ability:admin,aircraft');
 
             // expenses
             Route::get('expenses/export', 'ExpenseController@export')
@@ -274,6 +287,7 @@ class RouteServiceProvider extends ServiceProvider
                 ->middleware('ability:admin,finances');
 
             Route::resource('fares', 'FareController')->middleware('ability:admin,finances');
+            Route::post('fares/trashbin', 'FareController@trashbin')->name('fares.trashbin')->middleware('ability:admin,finances');
 
             // files
             Route::post('files', 'FileController@store')
@@ -393,6 +407,10 @@ class RouteServiceProvider extends ServiceProvider
                 'delete',
             ], 'typeratings/{id}/users', 'TypeRatingController@users')->middleware('ability:admin,typeratings');
 
+            // SimBrief Airframes
+            Route::resource('airframes', 'AirframeController')->middleware('ability:admin,aircraft,fleet');
+            Route::get('sbupdate', 'AirframeController@updateSimbriefData')->name('airframes.sbupdate')->middleware('ability:admin,aircraft,fleet');
+
             // maintenance
             Route::match(['get'], 'maintenance', 'MaintenanceController@index')
                 ->name('maintenance.index')->middleware('ability:admin,maintenance');
@@ -400,11 +418,17 @@ class RouteServiceProvider extends ServiceProvider
             Route::match(['post'], 'maintenance/cache', 'MaintenanceController@cache')
                 ->name('maintenance.cache')->middleware('ability:admin,maintenance');
 
+            Route::match(['post'], 'maintenance/queue', 'MaintenanceController@queue')
+                ->name('maintenance.queue')->middleware('ability:admin,maintenance');
+
             Route::match(['post'], 'maintenance/update', 'MaintenanceController@update')
                 ->name('maintenance.update')->middleware('ability:admin,maintenance');
 
             Route::match(['post'], 'maintenance/forcecheck', 'MaintenanceController@forcecheck')
                 ->name('maintenance.forcecheck')->middleware('ability:admin,maintenance');
+
+            Route::match(['post'], 'maintenance/reseed', 'MaintenanceController@reseed')
+                ->name('maintenance.reseed')->middleware('ability:admin,maintenance');
 
             Route::match(['post'], 'maintenance/cron_enable', 'MaintenanceController@cron_enable')
                 ->name('maintenance.cron_enable')->middleware('ability:admin,maintenance');
@@ -451,6 +475,7 @@ class RouteServiceProvider extends ServiceProvider
             ], 'subfleets/{id}/typeratings', 'SubfleetController@typeratings')->middleware('ability:admin,fleet');
 
             Route::resource('subfleets', 'SubfleetController')->middleware('ability:admin,fleet');
+            Route::post('subfleets/trashbin', 'SubfleetController@trashbin')->name('subfleets.trashbin')->middleware('ability:admin,fleet');
 
             /**
              * USERS
@@ -461,7 +486,20 @@ class RouteServiceProvider extends ServiceProvider
             Route::get('users/{id}/regen_apikey', 'UserController@regen_apikey')
                 ->name('users.regen_apikey')->middleware('ability:admin,users');
 
+            Route::get('users/{id}/verify_email', 'UserController@verify_email')
+                ->name('users.verify_email')->middleware('ability:admin,users');
+
+            Route::get('users/{id}/request_email_verification', 'UserController@request_email_verification')
+                ->name('users.request_email_verification')->middleware('ability:admin,users');
+
             Route::resource('users', 'UserController')->middleware('ability:admin,users');
+
+            Route::resource('invites', 'InviteController')->middleware('ability:admin,users')
+                ->except([
+                    'show',
+                    'edit',
+                    'update',
+                ]);
 
             Route::match([
                 'get',
@@ -484,36 +522,41 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::match([
                 'get',
+                'patch',
                 'post',
                 'delete',
             ], 'dashboard/news', ['uses' => 'DashboardController@news'])
                 ->name('dashboard.news')->middleware('update_pending', 'ability:admin,admin-access');
 
-            //Modules
+            Route::resource('activities', 'ActivityController')
+                ->only(['index', 'show'])
+                ->middleware('ability:admin,admin-access');
+
+            // Modules
             Route::group([
                 'as'         => 'modules.',
                 'prefix'     => 'modules',
                 'middleware' => ['ability:admin,modules'],
             ], function () {
-                //Modules Index
+                // Modules Index
                 Route::get('/', 'ModulesController@index')->name('index');
 
-                //Add Module
+                // Add Module
                 Route::get('/create', 'ModulesController@create')->name('create');
 
-                //Store Module
+                // Store Module
                 Route::post('/create', 'ModulesController@store')->name('store');
 
-                //Enable Module
+                // Enable Module
                 Route::post('/enable', 'ModulesController@enable')->name('enable');
 
-                //Edit Module
+                // Edit Module
                 Route::get('/{id}/edit', 'ModulesController@edit')->name('edit');
 
-                //Update Module
+                // Update Module
                 Route::post('/{id}', 'ModulesController@update')->name('update');
 
-                //Delete Module
+                // Delete Module
                 Route::delete('/{id}', 'ModulesController@destroy')->name('destroy');
             });
         });
@@ -535,6 +578,8 @@ class RouteServiceProvider extends ServiceProvider
             'as'         => 'api.',
         ], function () {
             Route::group([], function () {
+                Route::get('/', 'StatusController@status');
+
                 Route::get('acars', 'AcarsController@live_flights');
                 Route::get('acars/geojson', 'AcarsController@pireps_geojson');
 
@@ -611,7 +656,7 @@ class RouteServiceProvider extends ServiceProvider
                 Route::post('pireps/{pirep_id}/acars/events', 'AcarsController@acars_events');
                 Route::post('pireps/{pirep_id}/acars/logs', 'AcarsController@acars_logs');
 
-                Route::get('settings', 'SettingsController@index');
+                // Route::get('settings', 'SettingsController@index');
 
                 // This is the info of the user whose token is in use
                 Route::get('user', 'UserController@index');
