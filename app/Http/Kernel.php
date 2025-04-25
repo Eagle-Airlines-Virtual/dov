@@ -20,6 +20,7 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Http\Middleware\CheckForMaintenanceMode;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
+use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Middleware\ValidateSignature;
@@ -33,6 +34,7 @@ class Kernel extends HttpKernel
         CheckForMaintenanceMode::class,
         TrimStrings::class,
         ConvertEmptyStringsToNull::class,
+        HandleCors::class
     ];
 
     protected $middlewareGroups = [
