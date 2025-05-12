@@ -77,7 +77,7 @@ class MigrationService extends Service
             $availMigrations[] = $filepath;
         }
 
-        // Log::info('Migrations available: '.count($availMigrations));
+        // Log::info('migrations available: '.count($availMigrations));
 
         return $availMigrations;
     }
@@ -138,7 +138,7 @@ class MigrationService extends Service
             $availMigrations[] = $filepath;
         }
 
-        // Log::info('Migrations available: '.count($availMigrations));
+        // Log::info('migrations available: '.count($availMigrations));
 
         // dd($availMigrations);
         return $availMigrations;
