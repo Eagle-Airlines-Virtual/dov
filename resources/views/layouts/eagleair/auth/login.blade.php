@@ -2,75 +2,73 @@
 @section('title', __('common.login'))
 
 @section('content')
-  <div class="col-md-4 ml-auto mr-auto content-center">
-    <div class="card card-login card-plain">
-      {{ Form::open(['url' => url('/login'), 'method' => 'post', 'class' => 'form']) }}
-      <div class="header header-primary text-center">
-        <div class="logo-container py-5" style="width: 320px;">
-          <img src="{{ public_asset('/assets/frontend/img/eagle_logo_white.png') }}"
-               width="320"
-               alt="Eagle Logo"
-          />
-        </div>
-      </div>
+  <div class="d-flex flex-column justify-content-center align-items-center">
+    <div class="logo-container py-5 mb-5">
+      <img src="{{ public_asset('/eagleair/img/logo_white.png') }}" width="320">
+    </div>
+    <div class="card w-100" style="max-width: 400px;">
       <div class="card-body">
-        <div class="input-group form-group-no-border{{ $errors->has('email') ? ' has-error' : '' }} input-lg">
-          <div class="input-group-prepend">
-            <span class="input-group-text">
-              <i class="now-ui-icons users_circle-08"></i>
-            </span>
+        <form method="post" action="{{ url('/login') }}" class="form">
+          @csrf
+          <div class="mb-3">
+            <label for="email" class="form-label">@lang('common.email') @lang('common.or') @lang('common.pilot_id')</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-person"></i></span>
+              <input type="text" name="email" id="email" class="form-control" value="{{ old('email') }}" required>
+            </div>
+            @if ($errors->has('email'))
+              <div class="text-danger">
+                <strong>{{ $errors->first('email') }}</strong>
+              </div>
+            @endif
           </div>
-          {{
-            Form::text('email', old('email'), [
-              'id' => 'email',
-              'placeholder' => __('common.email').' '.__('common.or').' '.__('common.pilot_id'),
-              'class' => 'form-control',
-              'required' => true,
-            ])
-          }}
-        </div>
-        @if ($errors->has('email'))
-          <span class="help-block">
-              <strong>{{ $errors->first('email') }}</strong>
-          </span>
-        @endif
 
-        <div class="input-group form-group-no-border{{ $errors->has('password') ? ' has-error' : '' }} input-lg">
-          <div class="input-group-prepend">
-            <span class="input-group-text">
-              <i class="now-ui-icons text_caps-small"></i>
-            </span>
+          <div class="mb-3">
+            <label for="password" class="form-label">@lang('auth.password')</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-lock"></i></span>
+              <input type="password" name="password" id="password" class="form-control" required>
+            </div>
+            @if ($errors->has('password'))
+              <div class="text-danger">
+                <strong>{{ $errors->first('password') }}</strong>
+              </div>
+            @endif
           </div>
-          {{
-              Form::password('password', [
-                  'name' => 'password',
-                  'class' => 'form-control',
-                  'placeholder' => __('auth.password'),
-                  'required' => true,
-              ])
-          }}
-        </div>
-        @if ($errors->has('password'))
-          <span class="help-block">
-              <strong>{{ $errors->first('password') }}</strong>
-          </span>
-        @endif
 
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary">@lang('common.login')</button>
+          </div>
+
+          @if(config('services.discord.enabled'))
+            <div class="d-grid mt-3">
+              <a href="{{ route('oauth.redirect', ['provider' => 'discord']) }}" class="btn" style="background-color:#738ADB;">
+                @lang('auth.loginwith', ['provider' => 'Discord'])
+              </a>
+            </div>
+          @endif
+
+          @if(config('services.ivao.enabled'))
+            <div class="d-grid mt-3">
+              <a href="{{ route('oauth.redirect', ['provider' => 'ivao']) }}" class="btn" style="background-color:#0d2c99;">
+                @lang('auth.loginwith', ['provider' => 'IVAO'])
+              </a>
+            </div>
+          @endif
+
+          @if(config('services.vatsim.enabled'))
+            <div class="d-grid mt-3">
+              <a href="{{ route('oauth.redirect', ['provider' => 'vatsim']) }}" class="btn" style="background-color:#29B473;">
+                @lang('auth.loginwith', ['provider' => 'VATSIM'])
+              </a>
+            </div>
+          @endif
+        </form>
       </div>
-      <div class="footer text-center">
-        <button class="btn btn-primary btn-round btn-lg btn-block">@lang('common.login')</button>
+      <div class="card-footer d-flex justify-content-between">
+        <a href="{{ url('/register') }}" class="link">@lang('auth.createaccount')</a>
+        <a href="{{ url('/password/reset') }}" class="link">@lang('auth.forgotpassword')?</a>
       </div>
-      <div class="pull-left">
-        <h6>
-          <a href="{{ url('/register') }}" class="link">@lang('auth.createaccount')</a>
-        </h6>
-      </div>
-      <div class="pull-right">
-        <h6>
-          <a href="{{ url('/password/reset') }}" class="link">@lang('auth.forgotpassword')?</a>
-        </h6>
-      </div>
-      {{ Form::close() }}
     </div>
   </div>
 @endsection

@@ -1,3 +1,22 @@
+@section('css')
+  @parent
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    .map-info-box {
+      position: absolute;
+      bottom: 0;
+      padding: 20px;
+      height: 100px;
+      z-index: 9999;
+      background-color: rgba(232, 232, 232, 0.9);
+    }
+
+    [data-bs-theme="dark"] .map-info-box {
+      background-color: rgba(33, 37, 41, 0.9);
+    }
+  </style>
+@endsection
+
 <div class="row">
   <div class="col-md-12">
     <div class="box-body">
@@ -5,7 +24,7 @@
       {{--
       This map uses rivets.js to fill in the updates from the livemap
       So the single brackets are used by rivets to fill in the values
-      And then the rv-* attributes are data-binds that will automatically
+      And then the rv-* attributes are data-bs-binds that will automatically
       update whenever the base model behind it updates:
 
           http://rivetsjs.com/docs/guide
@@ -42,8 +61,8 @@
           </div>
           <div style="float: right; margin-left: 30px; margin-right: 30px;">
             <p id="map_flight_stats_right">
-              @lang('widgets.livemap.groundspeed'): <span style="font-weight: bold">{ pirep.position.gs } kts</span><br/>
-              @lang('widgets.livemap.altitude'): <span style="font-weight: bold">{ pirep.position.altitude } ft</span><br/>
+              @lang('widgets.livemap.groundspeed'): <span style="font-weight: bold">{ pirep.position.gs }</span><br/>
+              @lang('widgets.livemap.altitude'): <span style="font-weight: bold">{ pirep.position.altitude }</span><br/>
               @lang('widgets.livemap.heading'): <span style="font-weight: bold">{ pirep.position.heading }</span><br/>
             </p>
           </div>
@@ -51,9 +70,9 @@
             <p id="map_flight_stats_middle">
               @lang('common.status'): <span style="font-weight: bold">{ pirep.status_text }</span><br/>
               @lang('flights.flighttime'): <span style="font-weight: bold">{ pirep.flight_time | time_hm }</span><br/>
-              @lang('common.distance'): <span style="font-weight: bold">{ pirep.position.distance.{{setting('units.distance')}} }nm</span>
+              @lang('common.distance'): <span style="font-weight: bold">{ pirep.position.distance.{{setting('units.distance')}} }</span>
               / <span style="font-weight: bold">
-                                        { pirep.planned_distance.{{setting('units.distance')}} }nm</span>
+                                        { pirep.planned_distance.{{setting('units.distance')}} }</span>
             </p>
           </div>
         </div>
@@ -74,7 +93,7 @@ and being mindful of the rivets bindings
 --}}
 <div id="live_flights" class="row">
   <div class="col-md-12">
-    <div rv-hide="has_data" class="jumbotron text-center">@lang('widgets.livemap.noflights')</div>
+    <div rv-hide="has_data"  class="p-5 mb-4 bg-body-tertiary rounded-3 text-center fs-4">@lang('widgets.livemap.noflights')</div>
     <table rv-show="has_data" id="live_flights_table" class="table table-striped">
       <thead>
       <tr class="text-small header">
@@ -95,10 +114,10 @@ and being mindful of the rivets bindings
         <td><span rv-title="pirep.dpt_airport.name">{ pirep.dpt_airport.icao }</span></td>
         <td><span rv-title="pirep.arr_airport.name">{ pirep.arr_airport.icao }</span></td>
         <td>{ pirep.aircraft.registration }</td>
-        <td>{ pirep.position.altitude } ft</td>
-        <td>{ pirep.position.gs } kts</td>
-        <td>{ pirep.position.distance.{{setting('units.distance')}} | fallback 0 }nm /
-          { pirep.planned_distance.{{setting('units.distance')}} | fallback 0 }nm
+        <td>{ pirep.position.altitude }</td>
+        <td>{ pirep.position.gs }</td>
+        <td>{ pirep.position.distance.{{setting('units.distance')}} | fallback 0 } /
+          { pirep.planned_distance.{{setting('units.distance')}} | fallback 0 }
         </td>
         <td>{ pirep.status_text }</td>
       </tr>
@@ -116,7 +135,7 @@ and being mindful of the rivets bindings
       aircraft_icon: '{!! public_asset('/assets/img/acars/aircraft.png') !!}',
       refresh_interval: {{ setting('acars.update_interval', 60) }},
       units: '{{ setting('units.distance') }}',
-      flown_route_color: '#001746',
+      flown_route_color: '#067ec1',
       leafletOptions: {
         scrollWheelZoom: false,
       }

@@ -7,6 +7,7 @@
 </div>
 
 @section('scripts')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <script type="text/javascript">
     phpvms.map.render_route_map({
       pirep_uri: '{!! url('/api/pireps/'.$pirep->id.'/acars/geojson') !!}',
@@ -15,7 +16,7 @@
       actual_route_line: {!! json_encode($map_features['actual_route_line']) !!},
       actual_route_points: {!! json_encode($map_features['actual_route_points']) !!},
       aircraft_icon: '{!! public_asset('/assets/img/acars/aircraft.png') !!}',
-      flown_route_color: '#001746',
+      flown_route_color: '#067ec1',
       circle_color: '#056093',
       flightplan_route_color: '#8B008B',
       leafletOptions: {

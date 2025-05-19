@@ -1,5 +1,5 @@
 {
-    "name": "eagleair",
-    "parent_theme": null,
-    "extends": "beta"
+  "name": "eagleair",
+  "extends": "seven",
+  "asset-path": "eagleair"
 }

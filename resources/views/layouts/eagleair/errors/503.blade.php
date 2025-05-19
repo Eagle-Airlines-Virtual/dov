@@ -1,47 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>@lang('errors.503.title')</title>
-
-  <link href="https://fonts.googleapis.com/css?family=Lato:100" rel="stylesheet" type="text/css">
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Server Maintenance</title>
+  <script>
+    // Check for saved user preference, if any, on initial load
+    (function() {
+      if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-bs-theme', "dark")
+      }
+    })();
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+  integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <style>
-    html, body {
+    body, html {
       height: 100%;
-    }
-
-    body {
       margin: 0;
-      padding: 0;
-      width: 100%;
-      color: #B0BEC5;
-      display: table;
-      font-weight: 100;
-      font-family: 'Lato', sans-serif;
-    }
-
-    .container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       text-align: center;
-      display: table-cell;
-      vertical-align: middle;
-    }
-
-    .content {
-      text-align: center;
-      display: inline-block;
-    }
-
-    .title {
-      font-size: 72px;
-      margin-bottom: 40px;
     }
   </style>
 </head>
 <body>
-<div class="container">
-  <div class="content">
-    <div class="title">@lang('errors.503.message')</div>
+  <div>
+    <h1 class="display-1 fw-bold">503</h1>
+    <h3 class="fs-3">We'll Be Right Back!</h3>
+    <p class="lead">
+      Our server is currently undergoing maintenance, we'll be back online shortly. Thank you for your patience!
+    </p>
   </div>
-</div>
 </body>
 </html>

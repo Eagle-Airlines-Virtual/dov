@@ -1,69 +1,40 @@
-<h4>@lang('toc.title')</h4>
+<h4>Termos e Condições de Uso</h4>
 <textarea readonly class="form-control" style="height: 150px; border: 1px #ccc solid;">
-{{ config('app.name') }} offers this Web site, including all information, software,
-products and services available from this Web site or offered as part of or in conjunction
-with this Web site (the “Web site”), to you, the user, conditioned upon your acceptance of
-all of the terms, conditions, policies and notices stated here. {{ config('app.name') }}
-    reserves the right to make changes to these Terms and Conditions immediately by posting the
-changed Terms and Conditions in this location.
+{{ config('app.name') }} oferece este site, incluindo todas as informações, produtos, serviços e funcionalidades nele contidos (o "Site"), ao usuário, mediante a aceitação integral destes Termos e Condições de Uso.
 
-Your continued use of the Web site constitutes your agreement to all such terms, conditions
-and notices, and any changes to the Terms and Conditions made by {{ config('app.name') }}.
+Ao acessar e utilizar este Site, você concorda expressamente com os termos aqui descritos. {{ config('app.name') }} reserva-se o direito de alterar estes Termos e Condições a qualquer momento, mediante publicação da nova versão neste mesmo endereço eletrônico.
 
-The term ‘genericwebsite.com’ or ‘us’ or ‘we’ refers to the owner of the website. The term
-‘you’ refers to the user or viewer of our website.
+1. DEFINIÇÕES
+O termo "usuário" se refere à pessoa física ou jurídica que acessa ou utiliza este Site. O termo "nós" ou "{{ config('app.name') }}" refere-se ao proprietário do Site.
 
-The use of this website is subject to the following terms of use:
+2. CONDIÇÕES DE USO
+O uso deste Site é por sua conta e risco. Este Site é fornecido "no estado em que se encontra", sem garantias de qualquer tipo, expressas ou implícitas. Não garantimos que o acesso ao Site será contínuo, livre de erros ou seguro.
 
-Use the website at your own risk. This website is provided to you “as is,” without warranty
-of any kind either express or implied. Neither {{ config('app.name') }} nor its employees,
-agents, third-party information providers, merchants, licensors or the like warrant that the
-Web site or its operation will be accurate, reliable, uninterrupted or error-free. No agent
-or representative has the authority to create any warranty regarding the Web site on behalf
-of {{ config('app.name') }}. {{ config('app.name') }} reserves the right to change or
-discontinue at any time any aspect or feature of the Web site.
+Nenhum funcionário, representante ou terceiro está autorizado a oferecer garantias adicionais em nome de {{ config('app.name') }}.
 
-Exclusion of Liability
+3. RESPONSABILIDADE
+O conteúdo deste Site é destinado exclusivamente para fins informativos e está sujeito a alterações sem aviso prévio. Não garantimos a exatidão, integridade ou atualidade das informações apresentadas.
 
-The content of the pages of this website is for your general information and use only. It is
-subject to change without notice.
+Não nos responsabilizamos por perdas ou danos decorrentes do uso ou da impossibilidade de uso do Site, inclusive em relação a dados incorretos, interrupções de serviço ou falhas técnicas.
 
-Neither we nor any third parties provide any warranty or guarantee as to the accuracy,
-timeliness, performance, completeness or suitability of the information and materials found or
-offered on this website for any particular purpose. You acknowledge that such information and
-materials may contain inaccuracies or errors and we expressly exclude liability for any such
-inaccuracies or errors to the fullest extent permitted by law.
+4. PROTEÇÃO DE DADOS (LGPD)
+O tratamento de dados pessoais realizado por este Site observa os princípios e as bases legais previstas na Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018). Os dados eventualmente coletados são utilizados apenas para as finalidades informadas, sendo garantidos os direitos dos titulares quanto ao acesso, correção, exclusão, portabilidade e revogação de consentimento.
 
-Indemnification
+Para mais informações sobre o tratamento de dados pessoais, acesse nossa Política de Privacidade.
 
-Your use of any information or materials on this website is entirely at your own risk, for which
-we shall not be liable. It shall be your own responsibility to ensure that any products, services
-or information available through this website meet your specific requirements.
+5. DIREITOS AUTORAIS E PROPRIEDADE INTELECTUAL
+Todo o conteúdo presente neste Site, incluindo textos, imagens, códigos-fonte, logotipos, layouts e design, é de propriedade de {{ config('app.name') }} ou de seus licenciadores e está protegido pela legislação brasileira e internacional de direitos autorais e propriedade intelectual.
 
-This website contains material which is owned by or licensed to us. This material includes, but is
-not limited to, the design, layout, look, appearance and graphics. Reproduction is prohibited other
-than in accordance with the copyright notice, which forms part of these terms and conditions.
+É proibida a reprodução, distribuição, modificação ou qualquer uso do conteúdo sem autorização prévia e por escrito.
 
-All trade marks reproduced in this website which are not the property of, or licensed to, the
-operator are acknowledged on the website.
+6. LINKS PARA TERCEIROS
+Este Site pode conter links para outros sites de terceiros. Esses links são fornecidos apenas para sua conveniência e não implicam em qualquer endosso ou responsabilidade sobre o conteúdo desses sites. O acesso a sites externos é de responsabilidade do usuário.
 
-Unauthorized use of this website may give rise to a claim for damages and/or be a criminal offense.
+7. USO INDEVIDO
+O uso não autorizado deste Site poderá acarretar responsabilidade civil e/ou criminal, conforme a legislação aplicável.
 
-From time to time this website may also include links to other websites. These links are provided
-for your convenience to provide further information. They do not signify that we endorse the
-website(s). We have no responsibility for the content of the linked website(s).
+8. FORO E LEGISLAÇÃO APLICÁVEL
+Estes Termos e Condições são regidos pela legislação da República Federativa do Brasil. Fica eleito o foro da comarca de domicílio do usuário ou, na ausência, o foro da sede de {{ config('app.name') }}, para dirimir quaisquer dúvidas ou controvérsias decorrentes destes termos.
 
-Copyright
-Except for material in the public domain under United States copyright law, all material contained
-on the Web site (including all software, HTML code, Java applets, Active X controls and other code)
-is protected by United States and foreign copyright laws. Except as otherwise expressly provided
-in these terms and conditions, you may not copy, distribute, transmit, display, perform, reproduce,
-publish, license, modify, rewrite, create derivative works from, transfer, or sell any material
-contained on the Web site without the prior consent of the copyright owner.
-
-None of the material contained on {{ config('app.name') }} may be reverse-engineered, disassembled,
-decompiled, transcribed, stored in a retrieval system, translated into any language or computer language,
-retransmitted in any form or by any means (electronic, mechanical, photo reproduction, recordation or
-otherwise), resold or redistributed without the prior written consent of {{ config('app.name') }}.
-Violation of this provision may result in severe civil and criminal penalties.
+Ao continuar utilizando o Site, você declara estar ciente e de acordo com os presentes Termos e Condições.
 </textarea>
