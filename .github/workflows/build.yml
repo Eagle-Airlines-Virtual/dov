@@ -24,10 +24,10 @@ jobs:
         run: composer install --no-dev --optimize-autoloader
 
       - name: Instalar dependências do Node.js
-        run: npm install
+        run: yarn
 
       - name: Compilar assets
-        run: npm run prod
+        run: yarn prod
 
       - name: 📁 Remover arquivos desnecessários
         run: |
