@@ -18,12 +18,12 @@
                     </li>
                 @endif
 
-                <li class="nav-item d-flex align-items-center">
+                <!--<li class="nav-item d-flex align-items-center">
                     <a class="nav-link  d-flex gap-1" href="{{ route('frontend.livemap.index') }}">
                         <i class="bi bi-globe"></i>
                         @lang('common.livemap')
                     </a>
-                </li>
+                </li>-->
 
                 <li class="nav-item d-flex align-items-center">
                     <a class="nav-link  d-flex gap-1" href="{{ route('frontend.pilots.index') }}">
@@ -66,12 +66,12 @@
                         </a>
                     </li>
                 @else
-                    <li class="nav-item d-flex align-items-center">
+                    <!--<li class="nav-item d-flex align-items-center">
                         <a class="nav-link d-flex gap-1" href="{{ route('frontend.flights.index') }}">
                             <i class="bi bi-airplane"></i>
                             {{ trans_choice('common.flight', 2) }}
                         </a>
-                    </li>
+                    </li>-->
                     <li class="nav-item d-flex align-items-center">
                         <a class="nav-link d-flex gap-1" href="{{ route('frontend.downloads.index') }}">
                             <i class="bi bi-download"></i>
@@ -106,13 +106,13 @@
                             <a class="dropdown-item" href="{{ route('frontend.profile.index') }}">
                                 <i class="bi bi-person"></i>&nbsp;&nbsp;@lang('common.profile')
                             </a>
-                            <div class="dropdown-divider"></div>
+                            <!--<div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="{{ route('frontend.pireps.index') }}">
                                 <i class="bi bi-journal-check"></i>&nbsp;&nbsp;{{ trans_choice('common.pirep', 2) }}
                             </a>
                             <a class="dropdown-item" href="{{ route('frontend.flights.bids') }}">
                                 <i class="bi bi-bookmark-check"></i>&nbsp;&nbsp;{{ trans_choice('flights.mybid', 2) }}
-                            </a>
+                            </a>-->
                             <div class="dropdown-divider"></div>
                             @can('access_admin')
                                 <a class="dropdown-item" href="{{ url('/admin') }}">
