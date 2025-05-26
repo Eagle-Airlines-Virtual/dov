@@ -126,6 +126,10 @@ class AirportService extends Service
             return;
         }
 
+        if ($lookup['iata'] === 'JJD') {
+            $lookup['icao'] = 'SBJE';
+        }
+
         $airport = new Airport($lookup);
         $airport->save();
 
